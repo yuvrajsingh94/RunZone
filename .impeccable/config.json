@@ -1,0 +1,14 @@
+{
+  "version": "4.1.1",
+  "buildPath": "code",
+  "surface": "product",
+  "mode": "Operate",
+  "detector": {
+    "enabled": true,
+    "ignoreRules": []
+  },
+  "designSystem": {
+    "name": "RunZone Dark Endurance HUD",
+    "theme": "dark"
+  }
+}

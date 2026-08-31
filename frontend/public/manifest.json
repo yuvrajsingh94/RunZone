@@ -1,0 +1,24 @@
+{
+  "short_name": "RunZone",
+  "name": "RunZone — Territory Conquest & Fatigue Control",
+  "description": "Geospatial running platform with 40m PostGIS territory conquest and deterministic ACWR fatigue control.",
+  "icons": [
+    {
+      "src": "https://api.iconify.design/lucide:compass.svg?color=%23B8492E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://api.iconify.design/lucide:compass.svg?color=%23B8492E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#14181A",
+  "theme_color": "#B8492E",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}

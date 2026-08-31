@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostGIS-enabled PostgreSQL database
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: runzone_postgis
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-runzone_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-runzone_secret_123}
+      POSTGRES_DB: ${POSTGRES_DB:-runzone_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./backend/scripts/init_postgis.sql:/docker-entrypoint-initdb.d/init_postgis.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U runzone_admin -d runzone_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: runzone_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-runzone_admin}:${POSTGRES_PASSWORD:-runzone_secret_123}@db:5432/${POSTGRES_DB:-runzone_db}
+      SYNC_DATABASE_URL: postgresql://${POSTGRES_USER:-runzone_admin}:${POSTGRES_PASSWORD:-runzone_secret_123}@db:5432/${POSTGRES_DB:-runzone_db}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super_secret_runzone_jwt_key_2026}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 10080
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:-}
+      STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
+      STRAVA_REDIRECT_URI: ${STRAVA_REDIRECT_URI:-http://localhost:8000/api/v1/strava/callback}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # React Frontend (Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: runzone_frontend
+    restart: always
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgis_data:
