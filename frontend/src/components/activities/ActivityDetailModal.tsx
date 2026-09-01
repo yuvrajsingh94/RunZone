@@ -41,7 +41,7 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`;
 
   if (!isOpen || !activity) return null;
 
@@ -124,6 +124,8 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
     });
 
     map.on('load', () => {
+      map.resize();
+      setTimeout(() => map.resize(), 150);
       // Add Source
       map.addSource('activity-track', {
         type: 'geojson',

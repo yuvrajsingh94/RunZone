@@ -25,7 +25,7 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
   const [routeName, setRouteName] = useState<string>('Tactical Perimeter Route');
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`;
 
   // Haversine distance calculator
   const calculateTotalDistanceKm = (pts: [number, number][]): number => {
@@ -82,6 +82,8 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
     map.on('load', () => {
+      map.resize();
+      setTimeout(() => map.resize(), 150);
       // Add Route Line Source
       map.addSource('planned-route-source', {
         type: 'geojson',
