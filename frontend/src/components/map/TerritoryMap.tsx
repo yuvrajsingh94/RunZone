@@ -36,7 +36,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`;
 
   // Helper to generate dynamic local sectors around user coordinates
   const generateLocalSectors = (lat: number, lng: number): TerritoryGeoJSONCollection => {
@@ -143,7 +143,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       container: mapContainerRef.current,
       style: VECTOR_STYLE_URL,
       center: [initialLng, initialLat],
-      zoom: zoom,
+      zoom: 15.2,
       pitch: 0,
       bearing: 0,
       attributionControl: false,
@@ -164,104 +164,115 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     map.on('load', () => {
       setMapLoaded(true);
 
-      // Add user pin marker on load
-      const el = document.createElement('div');
-      el.className = 'w-6 h-6 rounded-full bg-cinder border-2 border-white flex items-center justify-center shadow-lg animate-pulse';
-      el.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span>';
-      userMarkerRef.current = new maplibregl.Marker({ element: el })
-        .setLngLat([initialLng, initialLat])
-        .addTo(map);
+      try {
+        // Add user pin marker on load
+        const el = document.createElement('div');
+        el.className = 'w-6 h-6 rounded-full bg-cinder border-2 border-white flex items-center justify-center shadow-lg animate-pulse';
+        el.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span>';
+        userMarkerRef.current = new maplibregl.Marker({ element: el })
+          .setLngLat([initialLng, initialLat])
+          .addTo(map);
 
-      // Determine starting territory dataset
-      let initialData: any = territories;
-      if (!initialData || !initialData.features || initialData.features.length === 0) {
-        initialData = generateLocalSectors(initialLat, initialLng);
+        // Determine starting territory dataset
+        let initialData: any = territories;
+        if (!initialData || !initialData.features || initialData.features.length === 0) {
+          initialData = generateLocalSectors(initialLat, initialLng);
+        }
+
+        // 1. Add Source for Territory Polygons
+        if (!map.getSource('territories-source')) {
+          map.addSource('territories-source', {
+            type: 'geojson',
+            data: initialData,
+          });
+        }
+
+        // 2. Translucent Fill Layer for Territories
+        if (!map.getLayer('territories-fill')) {
+          map.addLayer({
+            id: 'territories-fill',
+            type: 'fill',
+            source: 'territories-source',
+            paint: {
+              'fill-color': [
+                'case',
+                ['boolean', ['get', 'is_user_owned'], false],
+                '#B8492E',
+                '#3E8E7E',
+              ],
+              'fill-opacity': 0.4,
+            },
+          });
+        }
+
+        // 3. Glowing Outer Border for Territories
+        if (!map.getLayer('territories-border')) {
+          map.addLayer({
+            id: 'territories-border',
+            type: 'line',
+            source: 'territories-source',
+            paint: {
+              'line-color': [
+                'case',
+                ['<', ['coalesce', ['get', 'defense_points'], 50], 40],
+                '#C98A2E',
+                ['case', ['boolean', ['get', 'is_user_owned'], false], '#E05A3B', '#4EA896'],
+              ],
+              'line-width': 2.5,
+              'line-opacity': 0.95,
+            },
+          });
+        }
+
+        // 4. Source & Layer for Active Running Polyline Corridor
+        if (!map.getSource('active-run-source')) {
+          map.addSource('active-run-source', {
+            type: 'geojson',
+            data: (activePolyline && activePolyline.length >= 2) ? {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: activePolyline,
+              },
+            } : {
+              type: 'FeatureCollection',
+              features: [],
+            },
+          });
+        }
+
+        // 40m Buffered Glow Path
+        if (!map.getLayer('active-run-glow')) {
+          map.addLayer({
+            id: 'active-run-glow',
+            type: 'line',
+            source: 'active-run-source',
+            paint: {
+              'line-color': '#B8492E',
+              'line-width': 18,
+              'line-opacity': 0.35,
+              'line-blur': 4,
+            },
+          });
+        }
+
+        // Solid Core Vector Path
+        if (!map.getLayer('active-run-core')) {
+          map.addLayer({
+            id: 'active-run-core',
+            type: 'line',
+            source: 'active-run-source',
+            paint: {
+              'line-color': '#FFFFFF',
+              'line-width': 3.5,
+              'line-opacity': 0.95,
+            },
+          });
+        }
+      } catch (err) {
+        console.error('Error adding map layers:', err);
       }
-
-      // 1. Add Source for Territory Polygons
-      map.addSource('territories-source', {
-        type: 'geojson',
-        data: initialData,
-      });
-
-      // 2. Translucent Fill Layer for Territories
-      map.addLayer({
-        id: 'territories-fill',
-        type: 'fill',
-        source: 'territories-source',
-        paint: {
-          'fill-color': [
-            'case',
-            ['boolean', ['get', 'is_user_owned'], false],
-            '#B8492E', // Cinder red
-            '#3E8E7E', // Contour emerald
-          ],
-          'fill-opacity': [
-            'case',
-            ['boolean', ['get', 'is_user_owned'], false],
-            0.45,
-            0.30,
-          ],
-        },
-      });
-
-      // 3. Glowing Outer Border for Territories
-      map.addLayer({
-        id: 'territories-border',
-        type: 'line',
-        source: 'territories-source',
-        paint: {
-          'line-color': [
-            'case',
-            ['<', ['coalesce', ['get', 'defense_points'], 50], 40],
-            '#C98A2E', // Amber for contested
-            ['case', ['boolean', ['get', 'is_user_owned'], false], '#E05A3B', '#4EA896'],
-          ],
-          'line-width': ['case', ['boolean', ['get', 'is_user_owned'], false], 3.0, 2.0],
-          'line-opacity': 0.95,
-        },
-      });
-
-      // 4. Source & Layer for Active Running Polyline Corridor
-      map.addSource('active-run-source', {
-        type: 'geojson',
-        data: (activePolyline && activePolyline.length >= 2) ? {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: activePolyline,
-          },
-        } : {
-          type: 'FeatureCollection',
-          features: [],
-        },
-      });
-
-      // 40m Buffered Glow Path
-      map.addLayer({
-        id: 'active-run-glow',
-        type: 'line',
-        source: 'active-run-source',
-        paint: {
-          'line-color': '#B8492E',
-          'line-width': 18,
-          'line-opacity': 0.35,
-          'line-blur': 4,
-        },
-      });
-
-      // Solid Core Vector Path
-      map.addLayer({
-        id: 'active-run-core',
-        type: 'line',
-        source: 'active-run-source',
-        paint: {
-          'line-color': '#FFFFFF',
-          'line-width': 3.5,
-          'line-opacity': 0.95,
-        },
-      });
 
       // Interactive Click on Territory Polygons
       map.on('click', 'territories-fill', (e) => {
