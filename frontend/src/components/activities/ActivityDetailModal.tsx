@@ -120,13 +120,23 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
           'esri-satellite': {
             type: 'raster',
             tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, i-cubed, USDA FSA',
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+          },
+          'esri-labels': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
           },
         },
-        layers: [{ id: 'esri-satellite-layer', type: 'raster', source: 'esri-satellite', minzoom: 0, maxzoom: 23 }],
+        layers: [
+          { id: 'esri-satellite-layer', type: 'raster', source: 'esri-satellite', minzoom: 0, maxzoom: 23 },
+          { id: 'esri-labels-layer', type: 'raster', source: 'esri-labels', minzoom: 0, maxzoom: 23 },
+        ],
         glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       },
       center: [centerLng, centerLat],
