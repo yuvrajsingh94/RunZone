@@ -35,8 +35,8 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   const [locating, setLocating] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Carto Dark Matter Vector Style JSON (high-speed, WebGL GPU rendered)
-  const VECTOR_STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+  // OpenFreeMap Dark Style - free, no API key, reliable in production
+  const VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 
   // Helper to generate dynamic local sectors around user coordinates
   const generateLocalSectors = (lat: number, lng: number): TerritoryGeoJSONCollection => {
