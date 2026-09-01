@@ -143,23 +143,21 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       style: {
         version: 8,
         sources: {
-          'carto-dark': {
+          'esri-dark': {
             type: 'raster',
             tiles: [
-              'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-              'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-              'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+              'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
-            attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
           },
         },
         layers: [{
-          id: 'carto-dark-layer',
+          id: 'esri-dark-layer',
           type: 'raster',
-          source: 'carto-dark',
+          source: 'esri-dark',
           minzoom: 0,
-          maxzoom: 22,
+          maxzoom: 16,
         }],
         glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       },
