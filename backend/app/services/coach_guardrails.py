@@ -81,8 +81,10 @@ class CoachGuardrails:
         r"\b(shoes?|sneakers?|super\s+shoes?|carbon\s+plate|cushion(ing)?|drop|socks?|watch|garmin|strava|coros|polar|whoop|app|vest|belt|shorts)\b",
         # RunZone territory, map, game mechanics
         r"\b(territory|territories|map|maps|routes?|corridors?|sectors?|capture|capturing|claim|claiming|conquest|defense|rivals?|leaderboard|zonecoach|runzone|gps|gpx|buffer|gist|speed)\b",
+        # Respiration, Breathing, Lungs, and Oxygen intake
+        r"\b(breath|breathing|breathless|out\s+of\s+breath|shortness\s+of\s+breath|heavy\s+breathing|dyspnea|gasping|inhaler|lungs?|airway|hyperventilate|hyperventilation|oxygen|diaphragm)\b",
         # Conversational / Greetings / Coach identity
-        r"\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|greetings|who\s+are\s+you|what\s+do\s+you\s+do|what\s+are\s+you|how\s+are\s+you|help|thanks|thank\s+you|advice|tips|coach)\b",
+        r"\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|good\s+noon|good\s+day|yo|sup|hiya|howdy|greetings|who\s+are\s+you|what\s+do\s+you\s+do|what\s+are\s+you|how\s+are\s+you|help|thanks|thank\s+you|love\s+you|you\s+are\s+great|you're\s+great|advice|tips|coach)\b",
     ]
 
     # 4. Health Condition Extraction Patterns
