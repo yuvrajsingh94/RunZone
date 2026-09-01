@@ -131,6 +131,12 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_id(current_user: User = Depends(get_current_user)) -> int:
+    """Convenience dependency to retrieve the authenticated user's ID."""
+    return current_user.id
+
+
+
 async def get_current_user_optional(
     auth: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
     db: AsyncSession = Depends(get_db),
