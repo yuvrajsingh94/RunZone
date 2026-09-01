@@ -140,7 +140,29 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     // MapLibre uses [lng, lat] coordinate order
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: VECTOR_STYLE_URL,
+      style: {
+        version: 8,
+        sources: {
+          'carto-dark': {
+            type: 'raster',
+            tiles: [
+              'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+              'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+              'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+            ],
+            tileSize: 256,
+            attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          },
+        },
+        layers: [{
+          id: 'carto-dark-layer',
+          type: 'raster',
+          source: 'carto-dark',
+          minzoom: 0,
+          maxzoom: 22,
+        }],
+        glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
+      },
       center: [initialLng, initialLat],
       zoom: zoom,
       pitch: 0,
