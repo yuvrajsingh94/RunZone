@@ -18,7 +18,7 @@ class PaginationParams(BaseModel):
     limit: int = Field(20, ge=1, le=100, description="Items per page (max 100)")
     search: Optional[str] = Field(None, max_length=100, description="Optional search term")
     sort_by: Optional[str] = Field("created_at", description="Field to sort by")
-    sort_order: str = Field("desc", regex="^(asc|desc)$", description="Sort order ('asc' or 'desc')")
+    sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order ('asc' or 'desc')")
 
 
 class ErrorDetail(BaseModel):
