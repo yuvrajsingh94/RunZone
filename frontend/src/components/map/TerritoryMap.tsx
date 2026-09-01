@@ -143,21 +143,21 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       style: {
         version: 8,
         sources: {
-          'esri-dark': {
+          'esri-satellite': {
             type: 'raster',
             tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+              'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
-            attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, i-cubed, USDA FSA',
           },
         },
         layers: [{
-          id: 'esri-dark-layer',
+          id: 'esri-satellite-layer',
           type: 'raster',
-          source: 'esri-dark',
+          source: 'esri-satellite',
           minzoom: 0,
-          maxzoom: 16,
+          maxzoom: 23,
         }],
         glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       },
