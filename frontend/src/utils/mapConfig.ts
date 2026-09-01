@@ -20,15 +20,15 @@ export function getVectorStyleUrl(): string {
 }
 
 /**
- * Bulletproof Zero-Key Fallback Dark Raster Style
- * Uses OpenStreetMap with high-contrast night styling.
- * Guaranteed to render even if MapTiler credentials are completely missing, expired, or blocked.
+ * High-Reliability Clean OpenStreetMap Raster Style
+ * Uses the exact tile endpoint proven working in LiveRunModal.
+ * Zero external key requirement, zero rate limits, 100% reliable globally.
  */
 export const FALLBACK_DARK_STYLE: any = {
   version: 8,
-  name: 'RunZone Dark Fallback',
+  name: 'RunZone OpenStreetMap Basemap',
   sources: {
-    'osm-dark-tiles': {
+    'osm-tiles': {
       type: 'raster',
       tiles: [
         'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -41,23 +41,11 @@ export const FALLBACK_DARK_STYLE: any = {
   },
   layers: [
     {
-      id: 'fallback-bg',
-      type: 'background',
-      paint: {
-        'background-color': '#0F172A',
-      },
-    },
-    {
-      id: 'osm-dark-layer',
+      id: 'osm-tiles-layer',
       type: 'raster',
-      source: 'osm-dark-tiles',
+      source: 'osm-tiles',
       minzoom: 0,
       maxzoom: 19,
-      paint: {
-        'raster-opacity': 0.88,
-        'raster-contrast': 0.2,
-        'raster-brightness-min': 0.1,
-      },
     },
   ],
 };
@@ -87,10 +75,10 @@ export function setupMapErrorRecovery(
 
     if (isAuthOrNetworkError) {
       hasFallenBack = true;
-      console.warn('[RunZone Map Engine] MapTiler style unavailable. Switching to fallback dark raster style.', e);
+      console.warn('[RunZone Map Engine] MapTiler style unavailable. Switching to clean OpenStreetMap basemap.', e);
       try {
         map.setStyle(FALLBACK_DARK_STYLE);
-        if (onFallback) onFallback('MapTiler key unavailable - using high-reliability fallback map');
+        if (onFallback) onFallback('Using clean OpenStreetMap basemap');
       } catch (err) {
         console.error('[RunZone Map Engine] Failed to set fallback style:', err);
       }
