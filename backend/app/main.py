@@ -135,7 +135,6 @@ async def lifespan(app: FastAPI):
                         start_lat=37.7749 + (day_offset * 0.001),
                         start_lon=-122.4194 + (day_offset * 0.001),
                         distance_km=dist_meters / 1000.0,
-                        num_points=15,
                     )
                     
                     poly = SpatialService.buffer_linestring_meters(coords, 40.0)
