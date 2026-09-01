@@ -11,10 +11,13 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-night/90 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-fade-in"
+      className="fixed inset-0 z-[9999] bg-night/90 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="privacy-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="bg-panel border border-hairline w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}

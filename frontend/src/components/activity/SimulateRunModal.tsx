@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { FieldError } from '../common/FieldError';
 import { validateNumberRange, validateRequired } from '../../utils/validation';
@@ -12,16 +12,40 @@ interface SimulateRunModalProps {
 }
 
 export const SimulateRunModal: React.FC<SimulateRunModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [title, setTitle] = useState('Embarcadero waterfront corridor');
-  const [startLat, setStartLat] = useState(37.7749);
-  const [startLon, setStartLon] = useState(-122.4194);
-  const [distanceKm, setDistanceKm] = useState(5.5);
-  const [durationMinutes, setDurationMinutes] = useState(28);
+  // Read saved location or default to New Delhi
+  let defaultLat = 28.5209;
+  let defaultLon = 77.2806;
+  try {
+    const saved = JSON.parse(localStorage.getItem('runzone_last_location') || '{}');
+    if (saved.lat && saved.lng) {
+      defaultLat = saved.lat;
+      defaultLon = saved.lng;
+    }
+  } catch (e) {}
+
+  const [title, setTitle] = useState('Tactical Perimeter Corridor');
+  const [startLat, setStartLat] = useState(defaultLat);
+  const [startLon, setStartLon] = useState(defaultLon);
+  const [distanceKm, setDistanceKm] = useState(5.2);
+  const [durationMinutes, setDurationMinutes] = useState(26);
   const [bufferMeters, setBufferMeters] = useState(40);
   const [avgHr, setAvgHr] = useState(154);
   const [rpeScore, setRpeScore] = useState(6);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  // Update defaults when opened
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('runzone_last_location') || '{}');
+        if (saved.lat && saved.lng) {
+          setStartLat(saved.lat);
+          setStartLon(saved.lng);
+        }
+      } catch (e) {}
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -90,7 +114,15 @@ export const SimulateRunModal: React.FC<SimulateRunModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 font-sans animate-fade-in" role="dialog" aria-modal="true" aria-label="Simulate GPS run">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-sans animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Simulate GPS run"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="w-full max-w-md bg-panel border border-hairline p-6 shadow-2xl space-y-4">
         {/* Header */}
         <div className="flex items-baseline justify-between hairline-b pb-3">
@@ -105,7 +137,7 @@ export const SimulateRunModal: React.FC<SimulateRunModalProps> = ({ isOpen, onCl
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1 text-chalk-dim hover:text-chalk transition-colors"
+            className="p-1 text-chalk-dim hover:text-chalk transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -247,14 +279,14 @@ export const SimulateRunModal: React.FC<SimulateRunModalProps> = ({ isOpen, onCl
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 bg-panel-light hover:bg-panel text-chalk-muted hover:text-chalk border border-hairline transition-colors font-medium"
+              className="flex-1 py-2 bg-panel-light hover:bg-panel text-chalk-muted hover:text-chalk border border-hairline transition-colors font-medium cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-2 bg-cinder hover:bg-cinder-hover disabled:opacity-50 text-chalk transition-colors font-medium flex items-center justify-center gap-1.5 shadow-sm"
+              className="flex-1 py-2 bg-cinder hover:bg-cinder-hover disabled:opacity-50 text-chalk transition-colors font-medium flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
               {loading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

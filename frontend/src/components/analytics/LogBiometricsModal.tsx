@@ -82,7 +82,15 @@ export const LogBiometricsModal: React.FC<LogBiometricsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-night/90 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-fade-in" role="dialog" aria-modal="true" aria-label="Log Morning Biometrics">
+    <div
+      className="fixed inset-0 z-[9999] bg-night/90 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Log Morning Biometrics"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-panel border border-hairline w-full max-w-md p-6 space-y-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

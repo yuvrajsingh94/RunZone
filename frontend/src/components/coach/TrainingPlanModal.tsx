@@ -53,7 +53,7 @@ export const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-night/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 font-sans">
+    <div className="fixed inset-0 z-[9999] bg-night/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 font-sans">
       <div className="bg-panel border border-hairline w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header Bar */}
         <div className="px-5 py-4 bg-night hairline-b flex items-center justify-between">

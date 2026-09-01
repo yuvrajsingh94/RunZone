@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, GeoJSON, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import { TerritoryGeoJSONCollection } from '../../types';
 import { Crosshair, Loader2, Maximize2 } from 'lucide-react';
@@ -180,7 +180,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       style={{ height }}
     >
       {/* Top Left Status Overlay */}
-      <div className="absolute top-3 left-3 z-[1000] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
+      <div className="absolute top-3 left-3 z-[400] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
         <div className="flex items-center gap-1.5 text-chalk font-display font-semibold">
           <span className="w-2 h-2 rounded-full bg-cinder inline-block animate-pulse" />
           <span>Live Tactical Grid · OpenStreetMap</span>
@@ -192,7 +192,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       </div>
 
       {/* Top Right Tactical Controls */}
-      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5">
+      <div className="absolute top-3 right-3 z-[400] flex items-center gap-1.5">
         <button
           onClick={fetchLiveLocation}
           disabled={locating}

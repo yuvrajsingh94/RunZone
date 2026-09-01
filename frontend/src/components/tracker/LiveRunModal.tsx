@@ -153,7 +153,7 @@ export const LiveRunModal: React.FC<LiveRunModalProps> = ({ isOpen, onClose, onR
     mapPolyline.length > 0 ? mapPolyline[mapPolyline.length - 1] : [37.7955, -122.3937];
 
   return (
-    <div className="fixed inset-0 z-50 bg-night/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 font-sans">
+    <div className="fixed inset-0 z-[9999] bg-night/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 font-sans">
       <div className="bg-panel border border-hairline w-full max-w-4xl max-h-[96vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Top Control Bar */}
         <div className="px-4 py-3 bg-night hairline-b flex items-center justify-between">

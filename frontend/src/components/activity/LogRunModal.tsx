@@ -80,7 +80,15 @@ export const LogRunModal: React.FC<LogRunModalProps> = ({ isOpen, onClose, onSuc
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 font-sans animate-fade-in" role="dialog" aria-modal="true" aria-label="Log manual workout">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-sans animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Log manual workout"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="w-full max-w-md bg-panel border border-hairline p-6 shadow-2xl space-y-4">
         <div className="flex items-baseline justify-between hairline-b pb-3">
           <div>
