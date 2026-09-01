@@ -149,7 +149,6 @@ async def lifespan(app: FastAPI):
                         duration_seconds=duration_secs,
                         elevation_gain_meters=45,
                         avg_speed_mps=3.3,
-                        max_speed_mps=4.5,
                         avg_heart_rate=152,
                         max_heart_rate=174,
                         rpe_score=rpe,
