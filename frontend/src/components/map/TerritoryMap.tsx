@@ -36,7 +36,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`;
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
   // Helper to generate dynamic local sectors around user coordinates
   const generateLocalSectors = (lat: number, lng: number): TerritoryGeoJSONCollection => {
