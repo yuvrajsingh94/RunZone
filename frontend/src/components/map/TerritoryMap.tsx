@@ -2,8 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { TerritoryGeoJSONCollection } from '../../types';
-import { Compass, Maximize2, Crosshair, MapPin, Loader2 } from 'lucide-react';
+import { Compass, Maximize2, Crosshair, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { acquireLiveLocation, isSecureContext } from '../../utils/geoService';
+import {
+  getVectorStyleUrl,
+  setupMapErrorRecovery,
+  generateDynamicLocalSectors,
+  FALLBACK_DARK_STYLE,
+} from '../../utils/mapConfig';
 
 interface TerritoryMapProps {
   territories: TerritoryGeoJSONCollection | null;
@@ -21,7 +28,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   territories,
   activePolyline,
   center = [28.5209, 77.2806], // Default [lat, lon] - New Delhi
-  zoom = 13.5,
+  zoom = 14.5,
   height = '540px',
   onZoneSelect,
   fullBleed = false,
@@ -30,248 +37,117 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+
   const [is3DMode, setIs3DMode] = useState<boolean>(false);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [locating, setLocating] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isFallbackMode, setIsFallbackMode] = useState<boolean>(false);
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
-  const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
-
-  // Helper to generate dynamic local sectors around user coordinates
-  const generateLocalSectors = (lat: number, lng: number): TerritoryGeoJSONCollection => {
-    const delta = 0.005; // ~500m offset
-    return {
-      type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          id: 101,
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[
-              [lng - delta, lat - delta],
-              [lng + delta, lat - delta],
-              [lng + delta, lat + delta],
-              [lng - delta, lat + delta],
-              [lng - delta, lat - delta],
-            ]],
-          },
-          properties: {
-            id: 101,
-            zone_name: 'Local Perimeter Sector (Home Base)',
-            owner_id: 1,
-            owner_username: 'ApexRunner (You)',
-            owner_color: '#B8492E',
-            area_km2: 0.85,
-            defense_points: 88,
-            is_user_owned: true,
-            captured_at: new Date().toISOString(),
-          },
-        },
-        {
-          type: 'Feature',
-          id: 102,
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[
-              [lng + delta, lat],
-              [lng + delta * 2, lat],
-              [lng + delta * 2, lat + delta * 1.5],
-              [lng + delta, lat + delta * 1.5],
-              [lng + delta, lat],
-            ]],
-          },
-          properties: {
-            id: 102,
-            zone_name: 'East Corridor Ridge',
-            owner_id: 2,
-            owner_username: 'VanguardRival',
-            owner_color: '#3E8E7E',
-            area_km2: 1.12,
-            defense_points: 32, // Contested
-            is_user_owned: false,
-            captured_at: new Date().toISOString(),
-          },
-        },
-        {
-          type: 'Feature',
-          id: 103,
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[
-              [lng - delta * 2, lat + delta],
-              [lng - delta, lat + delta],
-              [lng - delta, lat + delta * 2],
-              [lng - delta * 2, lat + delta * 2],
-              [lng - delta * 2, lat + delta],
-            ]],
-          },
-          properties: {
-            id: 103,
-            zone_name: 'North Crossing Circuit',
-            owner_id: 3,
-            owner_username: 'PhantomStride',
-            owner_color: '#3E8E7E',
-            area_km2: 0.94,
-            defense_points: 75,
-            is_user_owned: false,
-            captured_at: new Date().toISOString(),
-          },
-        },
-      ],
-    };
-  };
-
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    // Check if user has a previously stored location
-    let initialLng = center[1];
-    let initialLat = center[0];
+  // Helper to safely attach territory and track layers once a style loads
+  const setupLayers = (map: maplibregl.Map, initLat: number, initLng: number) => {
     try {
-      const savedLoc = JSON.parse(localStorage.getItem('runzone_last_location') || '{}');
-      if (savedLoc.lat && savedLoc.lng) {
-        initialLat = savedLoc.lat;
-        initialLng = savedLoc.lng;
-        setUserCoords({ lat: initialLat, lng: initialLng });
+      // Determine starting territory dataset
+      let initialData: any = territories;
+      if (!initialData || !initialData.features || initialData.features.length === 0) {
+        initialData = generateDynamicLocalSectors(initLat, initLng);
       }
-    } catch (e) {}
 
-    // MapLibre uses [lng, lat] coordinate order
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: VECTOR_STYLE_URL,
-      center: [initialLng, initialLat],
-      zoom: 15.2,
-      pitch: 0,
-      bearing: 0,
-      attributionControl: false,
-    });
+      // 1. Add Source for Territory Polygons
+      if (!map.getSource('territories-source')) {
+        map.addSource('territories-source', {
+          type: 'geojson',
+          data: initialData,
+        });
+      }
 
-    // Add navigation controls (zoom, pitch, compass)
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+      // 2. Translucent Fill Layer for Territories
+      if (!map.getLayer('territories-fill')) {
+        map.addLayer({
+          id: 'territories-fill',
+          type: 'fill',
+          source: 'territories-source',
+          paint: {
+            'fill-color': [
+              'case',
+              ['boolean', ['get', 'is_user_owned'], false],
+              '#B8492E',
+              '#3E8E7E',
+            ],
+            'fill-opacity': 0.4,
+          },
+        });
+      }
 
-    // Add built-in Geolocation Control
-    const geolocateControl = new maplibregl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: true,
-      showUserLocation: true,
-      showAccuracyCircle: true,
-    });
-    map.addControl(geolocateControl, 'bottom-right');
+      // 3. Glowing Outer Border for Territories
+      if (!map.getLayer('territories-border')) {
+        map.addLayer({
+          id: 'territories-border',
+          type: 'line',
+          source: 'territories-source',
+          paint: {
+            'line-color': [
+              'case',
+              ['<', ['coalesce', ['get', 'defense_points'], 50], 40],
+              '#C98A2E',
+              ['case', ['boolean', ['get', 'is_user_owned'], false], '#E05A3B', '#4EA896'],
+            ],
+            'line-width': 2.5,
+            'line-opacity': 0.95,
+          },
+        });
+      }
 
-    map.on('load', () => {
-      setMapLoaded(true);
+      // 4. Source & Layer for Active Running Polyline Corridor
+      if (!map.getSource('active-run-source')) {
+        map.addSource('active-run-source', {
+          type: 'geojson',
+          data:
+            activePolyline && activePolyline.length >= 2
+              ? {
+                  type: 'Feature',
+                  properties: {},
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: activePolyline,
+                  },
+                }
+              : {
+                  type: 'FeatureCollection',
+                  features: [],
+                },
+        });
+      }
 
-      try {
-        // Add user pin marker on load
-        const el = document.createElement('div');
-        el.className = 'w-6 h-6 rounded-full bg-cinder border-2 border-white flex items-center justify-center shadow-lg animate-pulse';
-        el.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span>';
-        userMarkerRef.current = new maplibregl.Marker({ element: el })
-          .setLngLat([initialLng, initialLat])
-          .addTo(map);
+      // 40m Buffered Glow Path
+      if (!map.getLayer('active-run-glow')) {
+        map.addLayer({
+          id: 'active-run-glow',
+          type: 'line',
+          source: 'active-run-source',
+          paint: {
+            'line-color': '#B8492E',
+            'line-width': 18,
+            'line-opacity': 0.35,
+            'line-blur': 4,
+          },
+        });
+      }
 
-        // Determine starting territory dataset
-        let initialData: any = territories;
-        if (!initialData || !initialData.features || initialData.features.length === 0) {
-          initialData = generateLocalSectors(initialLat, initialLng);
-        }
-
-        // 1. Add Source for Territory Polygons
-        if (!map.getSource('territories-source')) {
-          map.addSource('territories-source', {
-            type: 'geojson',
-            data: initialData,
-          });
-        }
-
-        // 2. Translucent Fill Layer for Territories
-        if (!map.getLayer('territories-fill')) {
-          map.addLayer({
-            id: 'territories-fill',
-            type: 'fill',
-            source: 'territories-source',
-            paint: {
-              'fill-color': [
-                'case',
-                ['boolean', ['get', 'is_user_owned'], false],
-                '#B8492E',
-                '#3E8E7E',
-              ],
-              'fill-opacity': 0.4,
-            },
-          });
-        }
-
-        // 3. Glowing Outer Border for Territories
-        if (!map.getLayer('territories-border')) {
-          map.addLayer({
-            id: 'territories-border',
-            type: 'line',
-            source: 'territories-source',
-            paint: {
-              'line-color': [
-                'case',
-                ['<', ['coalesce', ['get', 'defense_points'], 50], 40],
-                '#C98A2E',
-                ['case', ['boolean', ['get', 'is_user_owned'], false], '#E05A3B', '#4EA896'],
-              ],
-              'line-width': 2.5,
-              'line-opacity': 0.95,
-            },
-          });
-        }
-
-        // 4. Source & Layer for Active Running Polyline Corridor
-        if (!map.getSource('active-run-source')) {
-          map.addSource('active-run-source', {
-            type: 'geojson',
-            data: (activePolyline && activePolyline.length >= 2) ? {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: activePolyline,
-              },
-            } : {
-              type: 'FeatureCollection',
-              features: [],
-            },
-          });
-        }
-
-        // 40m Buffered Glow Path
-        if (!map.getLayer('active-run-glow')) {
-          map.addLayer({
-            id: 'active-run-glow',
-            type: 'line',
-            source: 'active-run-source',
-            paint: {
-              'line-color': '#B8492E',
-              'line-width': 18,
-              'line-opacity': 0.35,
-              'line-blur': 4,
-            },
-          });
-        }
-
-        // Solid Core Vector Path
-        if (!map.getLayer('active-run-core')) {
-          map.addLayer({
-            id: 'active-run-core',
-            type: 'line',
-            source: 'active-run-source',
-            paint: {
-              'line-color': '#FFFFFF',
-              'line-width': 3.5,
-              'line-opacity': 0.95,
-            },
-          });
-        }
-      } catch (err) {
-        console.error('Error adding map layers:', err);
+      // Solid Core Vector Path
+      if (!map.getLayer('active-run-core')) {
+        map.addLayer({
+          id: 'active-run-core',
+          type: 'line',
+          source: 'active-run-source',
+          paint: {
+            'line-color': '#FFFFFF',
+            'line-width': 3.5,
+            'line-opacity': 0.95,
+          },
+        });
       }
 
       // Interactive Click on Territory Polygons
@@ -322,22 +198,86 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       map.on('mouseleave', 'territories-fill', () => {
         map.getCanvas().style.cursor = '';
       });
+    } catch (err) {
+      console.warn('[RunZone Map Engine] Layer setup notice:', err);
+    }
+  };
 
-      // Ensure map renders to full container dimensions
-      map.resize();
-      setTimeout(() => map.resize(), 150);
+  useEffect(() => {
+    isMountedRef.current = true;
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    // Check if user has a previously stored location
+    let initialLng = center[1];
+    let initialLat = center[0];
+    try {
+      const savedLoc = JSON.parse(localStorage.getItem('runzone_last_location') || '{}');
+      if (savedLoc.lat && savedLoc.lng) {
+        initialLat = savedLoc.lat;
+        initialLng = savedLoc.lng;
+        setUserCoords({ lat: initialLat, lng: initialLng });
+      }
+    } catch (e) {}
+
+    // MapLibre uses [lng, lat] coordinate order
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: getVectorStyleUrl(),
+      center: [initialLng, initialLat],
+      zoom: zoom,
+      pitch: 0,
+      bearing: 0,
+      attributionControl: false,
     });
 
-    map.on('error', (e) => {
-      console.warn('MapLibre GL Notice:', e);
+    // Add navigation controls (zoom, pitch, compass)
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+
+    // Attach automatic fallback recovery if MapTiler key fails
+    const cleanupErrorRecovery = setupMapErrorRecovery(map, (reason) => {
+      if (isMountedRef.current) {
+        setIsFallbackMode(true);
+        setFallbackNotice(reason);
+      }
+    });
+
+    map.on('load', () => {
+      if (!isMountedRef.current) return;
+      setMapLoaded(true);
+
+      // Add user pin marker on load
+      const el = document.createElement('div');
+      el.className = 'w-6 h-6 rounded-full bg-cinder border-2 border-white flex items-center justify-center shadow-lg animate-pulse';
+      el.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span>';
+      userMarkerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat([initialLng, initialLat])
+        .addTo(map);
+
+      setupLayers(map, initialLat, initialLng);
+
+      // Ensure canvas adapts to container
+      map.resize();
+      setTimeout(() => {
+        if (mapRef.current) mapRef.current.resize();
+      }, 150);
+    });
+
+    // Re-setup custom layers if style changes (e.g. on fallback transition)
+    map.on('style.load', () => {
+      if (!isMountedRef.current) return;
+      setupLayers(map, initialLat, initialLng);
     });
 
     mapRef.current = map;
 
-    const handleWindowResize = () => map.resize();
+    const handleWindowResize = () => {
+      if (mapRef.current) mapRef.current.resize();
+    };
     window.addEventListener('resize', handleWindowResize);
 
     return () => {
+      isMountedRef.current = false;
+      cleanupErrorRecovery();
       window.removeEventListener('resize', handleWindowResize);
       map.remove();
       mapRef.current = null;
@@ -378,67 +318,81 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     }
   }, [activePolyline, mapLoaded]);
 
-  // Fetch and fly to athlete's live physical GPS location
-  const fetchLiveLocation = () => {
-    if (!('geolocation' in navigator)) {
-      toast.error('Geolocation is not supported by your browser.');
+  // Production-grade Geolocation Trigger with explicit safety timeouts & toast lifecycle
+  const fetchLiveLocation = async () => {
+    if (locating) return;
+
+    if (!isSecureContext()) {
+      toast.error('GPS requires a secure HTTPS connection.', { id: 'gps-locating' });
       return;
     }
 
     setLocating(true);
-    toast('Fetching live GPS coordinates…', { icon: '🛰️' });
+    toast.loading('Acquiring live GPS coordinates…', { id: 'gps-locating' });
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setUserCoords({ lat: latitude, lng: longitude });
-        setLocating(false);
-
-        // Save in localStorage
-        try {
-          localStorage.setItem('runzone_last_location', JSON.stringify({ lat: latitude, lng: longitude }));
-        } catch (e) {}
-
-        if (mapRef.current) {
-          // Smoothly fly camera to user's real GPS location with 3D perspective
-          mapRef.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 15.5,
-            pitch: 45,
-            bearing: -15,
-            duration: 2000,
-          });
-
-          // Add or update pulsing runner pin
-          if (userMarkerRef.current) {
-            userMarkerRef.current.setLngLat([longitude, latitude]);
-          } else {
-            const el = document.createElement('div');
-            el.className = 'w-6 h-6 rounded-full bg-cinder border-2 border-white flex items-center justify-center shadow-lg animate-pulse';
-            el.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span>';
-            userMarkerRef.current = new maplibregl.Marker({ element: el })
-              .setLngLat([longitude, latitude])
-              .addTo(mapRef.current);
-          }
-
-          // Generate dynamic local sectors around user's city
-          const localSectors = generateLocalSectors(latitude, longitude);
-          const source = mapRef.current.getSource('territories-source') as maplibregl.GeoJSONSource;
-          if (source) {
-            source.setData(localSectors as any);
-          }
-
-          toast.success(`Centered on your live location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
-          if (onLocationFound) onLocationFound(latitude, longitude);
+    try {
+      const result = await acquireLiveLocation((stage) => {
+        if (stage === 'fallback_low_accuracy') {
+          toast.loading('GPS hardware weak, acquiring network position…', { id: 'gps-locating' });
         }
-      },
-      (error) => {
+      });
+
+      if (!isMountedRef.current) return;
+
+      const { latitude, longitude } = result;
+      setUserCoords({ lat: latitude, lng: longitude });
+
+      // Save in localStorage for instant reload
+      try {
+        localStorage.setItem('runzone_last_location', JSON.stringify({ lat: latitude, lng: longitude }));
+      } catch (e) {}
+
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: [longitude, latitude],
+          zoom: 15.5,
+          pitch: is3DMode ? 52 : 0,
+          bearing: is3DMode ? -15 : 0,
+          duration: 1800,
+        });
+
+        // Add or update pulsing runner pin
+        if (userMarkerRef.current) {
+          userMarkerRef.current.setLngLat([longitude, latitude]);
+        } else {
+          const el = document.createElement('div');
+          el.className = 'w-6 h-6 rounded-full bg-cinder border-2 border-white flex items-center justify-center shadow-lg animate-pulse';
+          el.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span>';
+          userMarkerRef.current = new maplibregl.Marker({ element: el })
+            .setLngLat([longitude, latitude])
+            .addTo(mapRef.current);
+        }
+
+        // Generate dynamic local sectors around user's city
+        const localSectors = generateDynamicLocalSectors(latitude, longitude);
+        const source = mapRef.current.getSource('territories-source') as maplibregl.GeoJSONSource;
+        if (source) {
+          source.setData(localSectors as any);
+        }
+      }
+
+      toast.success(`Position acquired (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`, {
+        id: 'gps-locating',
+      });
+
+      if (onLocationFound) onLocationFound(latitude, longitude);
+    } catch (err: any) {
+      if (!isMountedRef.current) return;
+      console.warn('[RunZone Geolocation]', err);
+      toast.error(err.userMessage || 'Could not acquire GPS position. Click to retry.', {
+        id: 'gps-locating',
+        duration: 5000,
+      });
+    } finally {
+      if (isMountedRef.current) {
         setLocating(false);
-        console.error('Location error:', error);
-        toast.error(`Could not fetch location: ${error.message}. Please enable location permissions.`);
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
+      }
+    }
   };
 
   // Toggle 3D Terrain Pitch (52° tactical angle vs 0° top-down)
@@ -460,11 +414,20 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     const targetLat = userCoords ? userCoords.lat : center[0];
     mapRef.current.flyTo({
       center: [targetLng, targetLat],
-      zoom: 14,
+      zoom: 14.5,
       pitch: is3DMode ? 52 : 0,
       bearing: is3DMode ? -25 : 0,
       duration: 1000,
     });
+  };
+
+  // Manual retry for MapTiler style
+  const retryMapStyle = () => {
+    if (!mapRef.current) return;
+    setIsFallbackMode(false);
+    setFallbackNotice(null);
+    mapRef.current.setStyle(getVectorStyleUrl());
+    toast('Reloading MapTiler vector theme…', { icon: '🔄' });
   };
 
   return (
@@ -478,7 +441,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       <div className="absolute top-3 left-3 z-10 bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
         <div className="flex items-center gap-1.5 text-chalk font-display font-semibold">
           <span className="w-2 h-2 rounded-full bg-cinder inline-block animate-pulse" />
-          <span>MapLibre GL · 60 FPS Vector</span>
+          <span>{isFallbackMode ? 'MapLibre GL · Fallback Mode' : 'MapLibre GL · 60 FPS Vector'}</span>
         </div>
         <div className="h-3 w-px bg-hairline-strong" />
         <span className="text-chalk-muted font-display tabular text-[11px]">
@@ -486,13 +449,27 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
         </span>
       </div>
 
+      {/* Fallback Mode Banner */}
+      {isFallbackMode && (
+        <div className="absolute bottom-3 left-3 z-10 bg-night/95 backdrop-blur-md border border-amber-500/40 px-3 py-1.5 flex items-center gap-2 text-xs text-amber-300 shadow-xl max-w-md">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+          <span className="text-[11px] truncate">{fallbackNotice || 'Running on fallback dark basemap'}</span>
+          <button
+            onClick={retryMapStyle}
+            className="ml-auto text-[11px] underline hover:text-white flex items-center gap-1 text-amber-400 shrink-0"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
+
       {/* Top Right Tactical Controls */}
       <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
         {/* Fetch Live Location Button */}
         <button
           onClick={fetchLiveLocation}
           disabled={locating}
-          className="px-3 py-1.5 bg-cinder hover:bg-cinder-hover text-chalk border border-cinder text-xs font-display font-bold transition-all flex items-center gap-1.5 shadow-md"
+          className="px-3 py-1.5 bg-cinder hover:bg-cinder-hover disabled:opacity-70 text-chalk border border-cinder text-xs font-display font-bold transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
           title="Fetch your exact physical GPS location"
         >
           {locating ? (
@@ -500,12 +477,12 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
           ) : (
             <Crosshair className="w-3.5 h-3.5" />
           )}
-          <span>{locating ? 'Locating…' : 'Locate Me'}</span>
+          <span>{locating ? 'Acquiring GPS…' : 'Locate Me'}</span>
         </button>
 
         <button
           onClick={toggle3D}
-          className={`px-2.5 py-1.5 border text-xs font-display font-semibold transition-all flex items-center gap-1.5 shadow-md ${
+          className={`px-2.5 py-1.5 border text-xs font-display font-semibold transition-all flex items-center gap-1.5 shadow-md cursor-pointer ${
             is3DMode
               ? 'bg-cinder text-chalk border-cinder'
               : 'bg-night/90 hover:bg-panel text-chalk-muted hover:text-chalk border-hairline'
@@ -518,7 +495,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
 
         <button
           onClick={resetCenter}
-          className="p-1.5 bg-night/90 hover:bg-panel border border-hairline text-chalk-muted hover:text-chalk transition-colors shadow-md"
+          className="p-1.5 bg-night/90 hover:bg-panel border border-hairline text-chalk-muted hover:text-chalk transition-colors shadow-md cursor-pointer"
           title="Re-center map"
         >
           <Maximize2 className="w-3.5 h-3.5" />

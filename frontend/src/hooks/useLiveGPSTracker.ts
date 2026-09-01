@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { mapGeolocationError, isSecureContext } from '../utils/geoService';
 
 export interface GPSPoint {
   lat: number;
@@ -165,15 +166,32 @@ export function useLiveGPSTracker(athleteWeightKg: number = 70) {
     [currentPaceSecKm]
   );
 
+  // Cleanup GPS watcher and wake lock on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      releaseWakeLock();
+    };
+  }, []);
+
   const handlePositionError = (err: GeolocationPositionError) => {
     console.error('GPS Geolocation Error:', err);
-    setErrorMsg(`GPS signal unavailable: ${err.message}`);
+    const mapped = mapGeolocationError(err);
+    setErrorMsg(`${mapped.userMessage} ${mapped.actionableHint}`);
   };
 
   // Start tracking
   const startRun = useCallback(() => {
     if (!('geolocation' in navigator)) {
       setErrorMsg('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    if (!isSecureContext()) {
+      setErrorMsg('GPS tracking requires a secure HTTPS connection.');
       return;
     }
 
@@ -193,8 +211,8 @@ export function useLiveGPSTracker(athleteWeightKg: number = 70) {
       handlePositionError,
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+        timeout: 12000,
+        maximumAge: 2000,
       }
     );
   }, [handlePositionUpdate]);

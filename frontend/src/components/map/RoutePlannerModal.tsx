@@ -4,6 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { Route, MapPin, Play, Download, Trash2, Undo2, Zap, Shield, Sparkles, X, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+import { getVectorStyleUrl, setupMapErrorRecovery } from '../../utils/mapConfig';
+
 interface RoutePlannerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,9 +25,6 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
   const [waypoints, setWaypoints] = useState<[number, number][]>([]);
   const [targetPaceMinKm, setTargetPaceMinKm] = useState<number>(5.5); // 5:30 min/km
   const [routeName, setRouteName] = useState<string>('Tactical Perimeter Route');
-
-  const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
   // Haversine distance calculator
   const calculateTotalDistanceKm = (pts: [number, number][]): number => {
@@ -58,9 +57,9 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
   useEffect(() => {
     if (!isOpen || !mapContainerRef.current || mapRef.current) return;
 
-    // Center on stored user location or default SF
-    let initialLng = -122.4194;
-    let initialLat = 37.7749;
+    // Center on stored user location or default New Delhi
+    let initialLng = 77.2806;
+    let initialLat = 28.5209;
     try {
       const savedLoc = JSON.parse(localStorage.getItem('runzone_last_location') || '{}');
       if (savedLoc.lat && savedLoc.lng) {
@@ -71,13 +70,15 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: VECTOR_STYLE_URL,
+      style: getVectorStyleUrl(),
       center: [initialLng, initialLat],
-      zoom: 14,
+      zoom: 14.5,
       pitch: 0,
       bearing: 0,
       attributionControl: false,
     });
+
+    const cleanupErrorRecovery = setupMapErrorRecovery(map);
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
@@ -135,6 +136,7 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
     mapRef.current = map;
 
     return () => {
+      cleanupErrorRecovery();
       map.remove();
       mapRef.current = null;
     };

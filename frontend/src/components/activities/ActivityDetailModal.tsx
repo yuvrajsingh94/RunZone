@@ -26,6 +26,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import { getVectorStyleUrl, setupMapErrorRecovery } from '../../utils/mapConfig';
+
 interface ActivityDetailModalProps {
   activity: Activity | null;
   isOpen: boolean;
@@ -39,9 +41,6 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-
-  const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
   if (!isOpen || !activity) return null;
 
@@ -115,13 +114,15 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: VECTOR_STYLE_URL,
+      style: getVectorStyleUrl(),
       center: [centerLng, centerLat],
       zoom: 14,
       pitch: 40,
       bearing: -15,
       attributionControl: false,
     });
+
+    const cleanupErrorRecovery = setupMapErrorRecovery(map);
 
     map.on('load', () => {
       // Add Source
@@ -182,6 +183,7 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
     mapRef.current = map;
 
     return () => {
+      cleanupErrorRecovery();
       map.remove();
       mapRef.current = null;
     };

@@ -31,11 +31,11 @@ class Settings(BaseSettings):
 
     # Groq AI Engine (Production Models with Fallback Chain)
     GROQ_API_KEY: str = ""
-    GROQ_DEFAULT_MODEL: str = "openai/gpt-oss-120b" # GPT OSS 120B (Primary Flagship)
+    GROQ_DEFAULT_MODEL: str = "llama-3.3-70b-versatile" # Llama 3.3 70B Versatile (Primary)
     GROQ_FALLBACK_MODELS: List[str] = [
-        "qwen/qwen3.8-27b",       # Fallback 1: Qwen 3.8 27B
-        "openai/gpt-oss-20b",     # Fallback 2: GPT OSS 20B (Ultra-fast)
-        "groq/compound",          # Fallback 3: Groq Compound
+        "openai/gpt-oss-120b",    # Fallback 1: GPT OSS 120B
+        "llama-3.1-8b-instant",   # Fallback 2: Llama 3.1 8B Instant (560 t/sec)
+        "openai/gpt-oss-20b",     # Fallback 3: GPT OSS 20B (1000 t/sec)
     ]
     GROQ_WHISPER_MODEL: str = "whisper-large-v3-turbo" # Primary Audio Transcription
     GROQ_WHISPER_FALLBACK: str = "whisper-large-v3"    # Fallback Audio Transcription
