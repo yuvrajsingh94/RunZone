@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import * as maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+﻿import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Activity } from '../../types';
 import { format } from 'date-fns';
 import {
@@ -26,22 +26,28 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { getVectorStyleUrl, setupMapErrorRecovery } from '../../utils/mapConfig';
-
 interface ActivityDetailModalProps {
   activity: Activity | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
+// Auto-resizer component on modal open
+const MapResizer: React.FC = () => {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+    const timer = setTimeout(() => map.invalidateSize(), 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+};
+
 export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   activity,
   isOpen,
   onClose,
 }) => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-
   if (!isOpen || !activity) return null;
 
   const distKm = activity.distance_meters / 1000;
@@ -81,116 +87,40 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
     };
   });
 
-  // Setup MapLibre preview if coordinates exist
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+  // Extract coordinates in Leaflet [lat, lon] format
+  let leafletCoords: [number, number][] = [];
+  if (
+    activity.geojson_data &&
+    Array.isArray(activity.geojson_data.coordinates) &&
+    activity.geojson_data.coordinates.length >= 2
+  ) {
+    // GeoJSON is [lon, lat] -> convert to [lat, lon] for Leaflet
+    leafletCoords = (activity.geojson_data.coordinates as number[][]).map(
+      (pt) => [pt[1], pt[0]] as [number, number]
+    );
+  } else {
+    // Default New Delhi corridor
+    leafletCoords = [
+      [28.5209, 77.2806],
+      [28.5225, 77.2825],
+      [28.5248, 77.2842],
+      [28.5270, 77.2858],
+      [28.5295, 77.2875],
+      [28.5318, 77.2890],
+    ];
+  }
 
-    let coords: [number, number][] = [];
-    if (
-      activity.geojson_data &&
-      Array.isArray(activity.geojson_data.coordinates) &&
-      activity.geojson_data.coordinates.length >= 2
-    ) {
-      coords = activity.geojson_data.coordinates as [number, number][];
-    } else {
-      // Safe Default San Francisco Waterfront polyline
-      coords = [
-        [-122.3937, 37.7955],
-        [-122.3948, 37.7968],
-        [-122.3962, 37.7982],
-        [-122.3985, 37.8001],
-        [-122.4011, 37.8018],
-        [-122.4042, 37.8035],
-        [-122.4078, 37.8052],
-        [-122.4115, 37.8066],
-        [-122.4158, 37.8078],
-        [-122.4201, 37.8085],
-      ];
-    }
-
-    const midIdx = Math.floor(coords.length / 2);
-    const centerLng = coords[midIdx]?.[0] ?? -122.4194;
-    const centerLat = coords[midIdx]?.[1] ?? 37.7749;
-
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: getVectorStyleUrl(),
-      center: [centerLng, centerLat],
-      zoom: 14,
-      pitch: 40,
-      bearing: -15,
-      attributionControl: false,
-    });
-
-    const cleanupErrorRecovery = setupMapErrorRecovery(map);
-
-    map.on('load', () => {
-      // Add Source
-      map.addSource('activity-track', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: coords,
-          },
-        },
-      });
-
-      // 40m Buffer Glow
-      map.addLayer({
-        id: 'track-glow',
-        type: 'line',
-        source: 'activity-track',
-        paint: {
-          'line-color': '#B8492E',
-          'line-width': 18,
-          'line-opacity': 0.35,
-          'line-blur': 4,
-        },
-      });
-
-      // Core Polyline
-      map.addLayer({
-        id: 'track-core',
-        type: 'line',
-        source: 'activity-track',
-        paint: {
-          'line-color': '#FFFFFF',
-          'line-width': 3.5,
-          'line-opacity': 0.95,
-        },
-      });
-
-      // Start & End markers
-      const startEl = document.createElement('div');
-      startEl.className = 'w-3.5 h-3.5 rounded-full bg-[#3E8E7E] border-2 border-white';
-      new maplibregl.Marker({ element: startEl }).setLngLat(coords[0]).addTo(map);
-
-      const endEl = document.createElement('div');
-      endEl.className = 'w-3.5 h-3.5 rounded-full bg-[#B8492E] border-2 border-white';
-      new maplibregl.Marker({ element: endEl }).setLngLat(coords[coords.length - 1]).addTo(map);
-
-      map.resize();
-      setTimeout(() => map.resize(), 150);
-    });
-
-    map.on('error', (e) => {
-      console.warn('MapLibre GL Notice:', e);
-    });
-
-    mapRef.current = map;
-
-    return () => {
-      cleanupErrorRecovery();
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [activity]);
+  const midIdx = Math.floor(leafletCoords.length / 2);
+  const centerLat = leafletCoords[midIdx]?.[0] ?? 28.5209;
+  const centerLng = leafletCoords[midIdx]?.[1] ?? 77.2806;
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-night/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 font-sans">
+    <div
+      className="fixed inset-0 z-[9999] bg-night/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 font-sans animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-panel border border-hairline w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header Bar */}
         <div className="px-5 py-4 bg-night hairline-b flex items-center justify-between">
@@ -203,47 +133,47 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
               <div className="text-[11px] text-chalk-dim">
                 {activity.started_at
                   ? format(new Date(activity.started_at), 'MMMM d, yyyy · h:mm a')
-                  : 'Recorded Workout'}
+                  : 'Recent Activity'}
               </div>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 text-chalk-dim hover:text-chalk transition-colors"
+            className="p-1.5 text-chalk-dim hover:text-chalk transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
-          {/* Primary Telemetry Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 bg-night border border-hairline py-3">
-            <div className="px-4">
-              <div className="text-[10px] text-chalk-dim uppercase font-display">Distance</div>
+        {/* Scrollable Content Body */}
+        <div className="p-5 space-y-6 overflow-y-auto">
+          {/* Primary Top Metrics Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div className="p-3 bg-night border border-hairline">
+              <div className="text-[10px] uppercase font-display text-chalk-dim">Distance</div>
               <div className="font-display text-2xl font-extrabold text-chalk tabular mt-0.5">
                 {distKm.toFixed(2)}
                 <span className="text-xs font-normal text-chalk-dim ml-1">km</span>
               </div>
             </div>
 
-            <div className="px-4 hairline-l">
-              <div className="text-[10px] text-chalk-dim uppercase font-display">Duration</div>
+            <div className="p-3 bg-night border border-hairline">
+              <div className="text-[10px] uppercase font-display text-chalk-dim">Duration</div>
               <div className="font-display text-2xl font-extrabold text-chalk tabular mt-0.5">
                 {durMin}:{durSec.toString().padStart(2, '0')}
               </div>
             </div>
 
-            <div className="px-4 hairline-l">
-              <div className="text-[10px] text-chalk-dim uppercase font-display">Avg Pace</div>
+            <div className="p-3 bg-night border border-hairline">
+              <div className="text-[10px] uppercase font-display text-chalk-dim">Avg Pace</div>
               <div className="font-display text-2xl font-extrabold text-chalk tabular mt-0.5">
                 {paceFormatted}
               </div>
             </div>
 
-            <div className="px-4 hairline-l">
-              <div className="text-[10px] text-chalk-dim uppercase font-display">Territory Captured</div>
+            <div className="p-3 bg-night border border-hairline">
+              <div className="text-[10px] uppercase font-display text-chalk-dim">Territory Claimed</div>
               <div className="font-display text-2xl font-extrabold text-cinder tabular mt-0.5">
                 +{(activity.territory_captured_km2 || distKm * 0.08).toFixed(3)}
                 <span className="text-xs font-normal text-chalk-dim ml-1">km²</span>
@@ -288,12 +218,72 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
 
           {/* Map Preview & Heart Rate Zones Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* MapLibre Track Preview */}
+            {/* Leaflet Track Preview */}
             <div className="lg:col-span-7 h-64 border border-hairline relative overflow-hidden bg-night">
-              <div className="absolute top-2 left-2 z-10 bg-night/90 border border-hairline px-2 py-1 text-[10px] font-display font-semibold text-chalk">
+              <div className="absolute top-2 left-2 z-[1000] bg-night/90 border border-hairline px-2 py-1 text-[10px] font-display font-semibold text-chalk">
                 40m PostGIS Corridor Path
               </div>
-              <div ref={mapContainerRef} className="w-full h-full" />
+              <MapContainer
+                center={[centerLat, centerLng]}
+                zoom={14}
+                scrollWheelZoom={false}
+                className="w-full h-full"
+              >
+                <MapResizer />
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maxZoom={19}
+                />
+
+                {/* 40m Buffered Glow Path */}
+                <Polyline
+                  positions={leafletCoords}
+                  pathOptions={{
+                    color: '#B8492E',
+                    weight: 16,
+                    opacity: 0.35,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  }}
+                />
+
+                {/* Core Track Polyline */}
+                <Polyline
+                  positions={leafletCoords}
+                  pathOptions={{
+                    color: '#FFFFFF',
+                    weight: 3.5,
+                    opacity: 0.95,
+                  }}
+                />
+
+                {/* Start & End Pins */}
+                {leafletCoords.length >= 2 && (
+                  <>
+                    <CircleMarker
+                      center={leafletCoords[0]}
+                      radius={6}
+                      pathOptions={{
+                        color: '#FFFFFF',
+                        fillColor: '#3E8E7E',
+                        fillOpacity: 1,
+                        weight: 2,
+                      }}
+                    />
+                    <CircleMarker
+                      center={leafletCoords[leafletCoords.length - 1]}
+                      radius={6}
+                      pathOptions={{
+                        color: '#FFFFFF',
+                        fillColor: '#B8492E',
+                        fillOpacity: 1,
+                        weight: 2,
+                      }}
+                    />
+                  </>
+                )}
+              </MapContainer>
             </div>
 
             {/* Heart Rate Distribution */}
