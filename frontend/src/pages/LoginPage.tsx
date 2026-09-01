@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { FieldError } from '../components/common/FieldError';
+import { validateEmailField, validateRequired } from '../utils/validation';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const LoginPage: React.FC = () => {
@@ -10,24 +12,56 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('Password123!');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const { login, loginDemoUser } = useAuth();
   const navigate = useNavigate();
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    const emailErr = validateEmailField(email);
+    if (emailErr) {
+      newErrors.email = emailErr;
+    }
+
+    const passwordErr = validateRequired(password, 'Password');
+    if (passwordErr) {
+      newErrors.password = passwordErr;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await api.login(email.trim(), password, rememberMe);
       login(res.access_token, res.refresh_token, res.user);
-      toast.success(`Signed in as ${res.user.username}`);
+      toast.success(`Welcome back, ${res.user.username}`);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please verify credentials.');
+      toast.error(err.message || 'Authentication failed. Please verify your credentials.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFieldChange = (field: string, value: string, setter: (v: string) => void) => {
+    setter(value);
+    if (errors[field]) {
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[field];
+        return updated;
+      });
     }
   };
 
@@ -52,14 +86,8 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Panel Form Card */}
-        <div className="bg-panel border border-hairline p-6 space-y-4">
-          {error && (
-            <div className="p-3 bg-night border border-hairline text-xs text-cinder leading-relaxed">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-3.5">
+        <div className="bg-panel border border-hairline p-6 space-y-4 shadow-2xl">
+          <form onSubmit={handleLogin} noValidate className="space-y-3.5">
             <div>
               <label className="block text-xs font-medium text-chalk-muted mb-1">
                 Email address
@@ -67,10 +95,15 @@ export const LoginPage: React.FC = () => {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk placeholder-chalk-dim focus:outline-none focus:border-cinder"
+                onChange={(e) => handleFieldChange('email', e.target.value, setEmail)}
+                placeholder="runner@domain.com"
+                className={`w-full px-3 py-2 bg-night text-xs text-chalk placeholder-chalk-dim focus:outline-none transition-colors border ${
+                  errors.email
+                    ? 'border-[#C1432E] focus:border-[#C1432E]'
+                    : 'border-hairline focus:border-cinder'
+                }`}
               />
+              <FieldError error={errors.email} />
             </div>
 
             <div>
@@ -86,18 +119,23 @@ export const LoginPage: React.FC = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk pr-8 focus:outline-none focus:border-cinder"
+                  onChange={(e) => handleFieldChange('password', e.target.value, setPassword)}
+                  className={`w-full px-3 py-2 bg-night text-xs text-chalk pr-8 focus:outline-none transition-colors border ${
+                    errors.password
+                      ? 'border-[#C1432E] focus:border-[#C1432E]'
+                      : 'border-hairline focus:border-cinder'
+                  }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-2.5 top-2.5 text-chalk-dim hover:text-chalk"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
+              <FieldError error={errors.password} />
             </div>
 
             <div className="flex items-center text-xs text-chalk-muted pt-0.5">

@@ -32,10 +32,13 @@ export function useTerritoryRealtime(
 
         ws.onmessage = (message) => {
           try {
-            const data: RealtimeTerritoryEvent = JSON.parse(message.data);
-            if (data.event === 'territory_claimed') {
+            const data = JSON.parse(message.data);
+            if (data?.event === 'territory_claimed') {
+              const area = Number(data.area_km2 || 0).toFixed(3);
+              const name = data.zone_name || 'Territory Corridor';
+              const user = data.owner_username || 'Athlete';
               toast.success(
-                `Sector claimed by ${data.owner_username}: +${data.area_km2.toFixed(3)} km² (${data.zone_name})`,
+                `Sector claimed by ${user}: +${area} km² (${name})`,
                 {
                   duration: 5000,
                   style: {
@@ -43,6 +46,16 @@ export function useTerritoryRealtime(
                   },
                 }
               );
+              if (onTerritoryClaimed) {
+                onTerritoryClaimed(data);
+              }
+            } else if (data?.event === 'territory_decay') {
+              if (data.is_neutral) {
+                toast(`Sector decayed to neutral: ${data.zone_name || 'Unclaimed sector'}`, {
+                  icon: '💀',
+                  duration: 4000,
+                });
+              }
               if (onTerritoryClaimed) {
                 onTerritoryClaimed(data);
               }

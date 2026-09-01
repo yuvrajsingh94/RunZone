@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { PasswordStrengthIndicator } from '../components/auth/PasswordStrengthIndicator';
+import { FieldError } from '../components/common/FieldError';
+import { validateEmailField, validatePasswordField, validateRequired } from '../utils/validation';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,17 +14,45 @@ export const RegisterPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    const usernameErr = validateRequired(username, 'Athlete username');
+    if (usernameErr) {
+      newErrors.username = usernameErr;
+    } else if (username.trim().length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
+    }
+
+    const emailErr = validateEmailField(email);
+    if (emailErr) {
+      newErrors.email = emailErr;
+    }
+
+    const passwordErr = validatePasswordField(password, true);
+    if (passwordErr) {
+      newErrors.password = passwordErr;
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Confirm password is required';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (!validateForm()) {
       return;
     }
 
@@ -39,9 +69,20 @@ export const RegisterPage: React.FC = () => {
       toast.success(`Welcome to RunZone, ${res.user.username}`);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Registration failed. Please review fields.');
+      toast.error(err.message || 'Registration failed. Please check your details.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFieldChange = (field: string, value: string, setter: (v: string) => void) => {
+    setter(value);
+    if (errors[field]) {
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[field];
+        return updated;
+      });
     }
   };
 
@@ -60,24 +101,18 @@ export const RegisterPage: React.FC = () => {
         </div>
 
         {/* Form Card */}
-        <div className="bg-panel border border-hairline p-6 space-y-4">
-          {error && (
-            <div className="p-3 bg-night border border-hairline text-xs text-cinder leading-relaxed">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleRegister} className="space-y-3.5">
+        <div className="bg-panel border border-hairline p-6 space-y-4 shadow-2xl">
+          <form onSubmit={handleRegister} noValidate className="space-y-3.5">
             <div>
               <label className="block text-xs font-medium text-chalk-muted mb-1">
-                Full name
+                Full name <span className="text-chalk-dim text-[10px]">(optional)</span>
               </label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Alex Mercer"
-                className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk placeholder-chalk-dim focus:outline-none focus:border-cinder"
+                className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk placeholder-chalk-dim focus:outline-none focus:border-cinder transition-colors"
               />
             </div>
 
@@ -88,11 +123,15 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
+                onChange={(e) => handleFieldChange('username', e.target.value, setUsername)}
                 placeholder="apex_runner"
-                className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk placeholder-chalk-dim focus:outline-none focus:border-cinder"
+                className={`w-full px-3 py-2 bg-night text-xs text-chalk placeholder-chalk-dim focus:outline-none transition-colors border ${
+                  errors.username
+                    ? 'border-[#C1432E] focus:border-[#C1432E]'
+                    : 'border-hairline focus:border-cinder'
+                }`}
               />
+              <FieldError error={errors.username} />
             </div>
 
             <div>
@@ -102,11 +141,15 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                onChange={(e) => handleFieldChange('email', e.target.value, setEmail)}
                 placeholder="runner@domain.com"
-                className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk placeholder-chalk-dim focus:outline-none focus:border-cinder"
+                className={`w-full px-3 py-2 bg-night text-xs text-chalk placeholder-chalk-dim focus:outline-none transition-colors border ${
+                  errors.email
+                    ? 'border-[#C1432E] focus:border-[#C1432E]'
+                    : 'border-hairline focus:border-cinder'
+                }`}
               />
+              <FieldError error={errors.email} />
             </div>
 
             <div>
@@ -116,10 +159,14 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk focus:outline-none focus:border-cinder"
+                onChange={(e) => handleFieldChange('password', e.target.value, setPassword)}
+                className={`w-full px-3 py-2 bg-night text-xs text-chalk focus:outline-none transition-colors border ${
+                  errors.password
+                    ? 'border-[#C1432E] focus:border-[#C1432E]'
+                    : 'border-hairline focus:border-cinder'
+                }`}
               />
+              <FieldError error={errors.password} />
               <PasswordStrengthIndicator password={password} />
             </div>
 
@@ -130,10 +177,14 @@ export const RegisterPage: React.FC = () => {
               <input
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk focus:outline-none focus:border-cinder"
+                onChange={(e) => handleFieldChange('confirmPassword', e.target.value, setConfirmPassword)}
+                className={`w-full px-3 py-2 bg-night text-xs text-chalk focus:outline-none transition-colors border ${
+                  errors.confirmPassword
+                    ? 'border-[#C1432E] focus:border-[#C1432E]'
+                    : 'border-hairline focus:border-cinder'
+                }`}
               />
+              <FieldError error={errors.confirmPassword} />
             </div>
 
             <button

@@ -7,6 +7,7 @@ import { ACWRGauge } from '../components/analytics/ACWRGauge';
 import { WorkloadTrendChart } from '../components/analytics/WorkloadTrendChart';
 import { DailyBriefingCard } from '../components/coach/DailyBriefingCard';
 import { CoachChatDrawer } from '../components/coach/CoachChatDrawer';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { Play, UploadCloud, Plus, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -124,10 +125,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenSimulate, onOpenManu
       {/* Grid: Fatigue Gauge & AI Coach Briefing */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-6">
-          <ACWRGauge data={acwrData} />
+          <ErrorBoundary isWidget={true} fallbackTitle="Fatigue Gauge Unavailable">
+            <ACWRGauge data={acwrData} />
+          </ErrorBoundary>
         </div>
         <div className="lg:col-span-6">
-          <DailyBriefingCard briefing={briefing} onOpenChat={() => setChatOpen(true)} />
+          <ErrorBoundary isWidget={true} fallbackTitle="Daily Briefing Unavailable">
+            <DailyBriefingCard briefing={briefing} onOpenChat={() => setChatOpen(true)} />
+          </ErrorBoundary>
         </div>
       </div>
 
@@ -148,16 +153,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenSimulate, onOpenManu
           </Link>
         </div>
 
-        <TerritoryMap
-          territories={territories}
-          height="440px"
-        />
+        <ErrorBoundary isWidget={true} fallbackTitle="Map Rendering Unavailable">
+          <TerritoryMap
+            territories={territories}
+            height="440px"
+          />
+        </ErrorBoundary>
       </div>
 
       {/* Timeline Chart & Recent Activities List */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7">
-          <WorkloadTrendChart history={acwrData?.weekly_history || []} />
+          <ErrorBoundary isWidget={true} fallbackTitle="Workload Timeline Unavailable">
+            <WorkloadTrendChart history={acwrData?.weekly_history || []} />
+          </ErrorBoundary>
         </div>
 
         {/* Recent Activity List (Hairline Divided) */}

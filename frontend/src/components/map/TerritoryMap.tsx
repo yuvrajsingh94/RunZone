@@ -313,7 +313,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   useEffect(() => {
     if (!mapRef.current || !mapLoaded) return;
     const source = mapRef.current.getSource('territories-source') as maplibregl.GeoJSONSource;
-    if (source && territories && territories.features.length > 0) {
+    if (source && territories && Array.isArray(territories.features) && territories.features.length > 0) {
       source.setData(territories as any);
     }
   }, [territories, mapLoaded]);

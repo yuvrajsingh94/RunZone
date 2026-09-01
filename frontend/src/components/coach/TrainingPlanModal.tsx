@@ -90,7 +90,7 @@ export const TrainingPlanModal: React.FC<TrainingPlanModalProps> = ({
 
           {!plan ? (
             /* Plan Setup Form Wizard */
-            <form onSubmit={handleGenerate} className="space-y-5 text-xs">
+            <form onSubmit={handleGenerate} noValidate className="space-y-5 text-xs">
               <div>
                 <label className="block text-chalk font-semibold mb-2 font-display">
                   1. Select Target Goal / Distance

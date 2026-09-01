@@ -3,15 +3,32 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { RefreshCw, ExternalLink, LogOut, HeartPulse, Check, Plus, X, Award, Trophy } from 'lucide-react';
 import { AchievementsGallery } from '../components/profile/AchievementsGallery';
+import { FieldError } from '../components/common/FieldError';
+import { validateNumberRange } from '../utils/validation';
 import toast from 'react-hot-toast';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
+  // Safe health conditions normalization helper
+  const parseConditions = (raw: any): string[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+      return raw.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
   const [restingHr, setRestingHr] = useState(user?.resting_hr || 52);
   const [maxHr, setMaxHr] = useState(user?.max_hr || 194);
   const [factionColor, setFactionColor] = useState(user?.faction_color || '#B8492E');
-  const [healthConditions, setHealthConditions] = useState<string[]>(user?.health_conditions || []);
+  const [healthConditions, setHealthConditions] = useState<string[]>(() => parseConditions(user?.health_conditions));
   const [customCondition, setCustomCondition] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [syncingStrava, setSyncingStrava] = useState(false);
 
@@ -33,23 +50,49 @@ export const ProfilePage: React.FC = () => {
   ];
 
   const toggleCondition = (cond: string) => {
-    if (healthConditions.includes(cond)) {
-      setHealthConditions(healthConditions.filter((c) => c !== cond));
-    } else {
-      setHealthConditions([...healthConditions, cond]);
-    }
+    setHealthConditions((prev) => {
+      const current = Array.isArray(prev) ? prev : parseConditions(prev);
+      if (current.includes(cond)) {
+        return current.filter((c) => c !== cond);
+      } else {
+        return [...current, cond];
+      }
+    });
   };
 
   const addCustomCondition = () => {
     if (!customCondition.trim()) return;
-    if (!healthConditions.includes(customCondition.trim())) {
-      setHealthConditions([...healthConditions, customCondition.trim()]);
-    }
+    const trimmed = customCondition.trim();
+    setHealthConditions((prev) => {
+      const current = Array.isArray(prev) ? prev : parseConditions(prev);
+      if (!current.includes(trimmed)) {
+        return [...current, trimmed];
+      }
+      return current;
+    });
     setCustomCondition('');
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors: Record<string, string> = {};
+    const rhrErr = validateNumberRange(Number(restingHr), 30, 110, 'Resting heart rate');
+    if (rhrErr) newErrors.restingHr = rhrErr;
+
+    const maxErr = validateNumberRange(Number(maxHr), 120, 230, 'Maximum heart rate');
+    if (maxErr) newErrors.maxHr = maxErr;
+
+    if (Number(maxHr) <= Number(restingHr) + 20) {
+      newErrors.maxHr = 'Max HR must be greater than Resting HR + 20 bpm';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     setSaving(true);
     try {
       const updated = await api.updateProfile({
@@ -170,7 +213,7 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {/* Physiology & Heart Rate Calibration Form */}
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} noValidate className="space-y-6">
         <div className="bg-panel border border-hairline p-5 space-y-4 text-xs">
           <h3 className="font-display text-sm font-bold text-chalk hairline-b pb-2">
             Physiology parameters
@@ -183,12 +226,24 @@ export const ProfilePage: React.FC = () => {
               </label>
               <input
                 type="number"
-                min="35"
-                max="100"
                 value={restingHr}
-                onChange={(e) => setRestingHr(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-night border border-hairline text-chalk tabular focus:outline-none focus:border-cinder"
+                onChange={(e) => {
+                  setRestingHr(Number(e.target.value));
+                  if (errors.restingHr) {
+                    setErrors((prev) => {
+                      const upd = { ...prev };
+                      delete upd.restingHr;
+                      return upd;
+                    });
+                  }
+                }}
+                className={`w-full px-3 py-2 bg-night text-chalk tabular focus:outline-none transition-colors border ${
+                  errors.restingHr
+                    ? 'border-[#C1432E] focus:border-[#C1432E]'
+                    : 'border-hairline focus:border-cinder'
+                }`}
               />
+              <FieldError error={errors.restingHr} />
               <p className="text-[10px] text-chalk-dim mt-1">Used for Karvonen HRR and TRIMP workload impulses.</p>
             </div>
 
@@ -198,12 +253,24 @@ export const ProfilePage: React.FC = () => {
               </label>
               <input
                 type="number"
-                min="140"
-                max="225"
                 value={maxHr}
-                onChange={(e) => setMaxHr(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-night border border-hairline text-chalk tabular focus:outline-none focus:border-cinder"
+                onChange={(e) => {
+                  setMaxHr(Number(e.target.value));
+                  if (errors.maxHr) {
+                    setErrors((prev) => {
+                      const upd = { ...prev };
+                      delete upd.maxHr;
+                      return upd;
+                    });
+                  }
+                }}
+                className={`w-full px-3 py-2 bg-night text-chalk tabular focus:outline-none transition-colors border ${
+                  errors.maxHr
+                    ? 'border-[#C1432E] focus:border-[#C1432E]'
+                    : 'border-hairline focus:border-cinder'
+                }`}
               />
+              <FieldError error={errors.maxHr} />
               <p className="text-[10px] text-chalk-dim mt-1">Calibrates training intensity zones (Zone 1 through 5).</p>
             </div>
           </div>

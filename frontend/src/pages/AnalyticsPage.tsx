@@ -5,6 +5,7 @@ import { ACWRGauge } from '../components/analytics/ACWRGauge';
 import { WorkloadTrendChart } from '../components/analytics/WorkloadTrendChart';
 import { BiometricsTrendChart } from '../components/analytics/BiometricsTrendChart';
 import { LogBiometricsModal } from '../components/analytics/LogBiometricsModal';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { Activity, Heart, Moon, Zap, Shield, Sparkles, BatteryCharging, RefreshCw, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -253,10 +254,12 @@ export const AnalyticsPage: React.FC = () => {
           </div>
 
           {/* 7-Day HRV & Heart Rate Trend Chart */}
-          <BiometricsTrendChart
-            data={biometricsData?.history || []}
-            onOpenLogModal={() => setLogModalOpen(true)}
-          />
+          <ErrorBoundary isWidget={true} fallbackTitle="Biometrics Trend Chart Unavailable">
+            <BiometricsTrendChart
+              data={biometricsData?.history || []}
+              onOpenLogModal={() => setLogModalOpen(true)}
+            />
+          </ErrorBoundary>
 
           {/* Interactive Biometrics Simulator */}
           <div className="bg-panel border border-hairline p-5 space-y-4 text-xs font-sans">
@@ -370,7 +373,9 @@ export const AnalyticsPage: React.FC = () => {
           {/* Primary Analytics Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-6">
-              <ACWRGauge data={acwrData} />
+              <ErrorBoundary isWidget={true} fallbackTitle="Fatigue Gauge Unavailable">
+                <ACWRGauge data={acwrData} />
+              </ErrorBoundary>
             </div>
 
             {/* Workload Zone Calibration Guide */}
@@ -429,7 +434,9 @@ export const AnalyticsPage: React.FC = () => {
           </div>
 
           {/* 14-Day Timeline Chart */}
-          <WorkloadTrendChart history={acwrData?.weekly_history || []} />
+          <ErrorBoundary isWidget={true} fallbackTitle="Workload Timeline Unavailable">
+            <WorkloadTrendChart history={acwrData?.weekly_history || []} />
+          </ErrorBoundary>
         </div>
       )}
 

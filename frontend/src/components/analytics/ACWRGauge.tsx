@@ -178,23 +178,23 @@ export const ACWRGauge: React.FC<ACWRGaugeProps> = ({ data }) => {
         <div className="px-2">
           <div className="text-[10px] text-chalk-dim">7-day acute</div>
           <div className="font-display text-sm font-semibold text-chalk tabular mt-0.5">
-            {Math.round(data.acute_workload_7d)}
+            {Math.round(data.acute_workload_7d || 0)}
           </div>
-          <div className="text-[10px] text-chalk-muted tabular">{data.total_distance_7d_km} km</div>
+          <div className="text-[10px] text-chalk-muted tabular">{(data.total_distance_7d_km || 0).toFixed(1)} km</div>
         </div>
 
         <div className="px-2 hairline-l">
           <div className="text-[10px] text-chalk-dim">28-day chronic</div>
           <div className="font-display text-sm font-semibold text-chalk tabular mt-0.5">
-            {Math.round(data.chronic_workload_28d)}
+            {Math.round(data.chronic_workload_28d || 0)}
           </div>
-          <div className="text-[10px] text-chalk-muted tabular">{data.total_distance_28d_km} km</div>
+          <div className="text-[10px] text-chalk-muted tabular">{(data.total_distance_28d_km || 0).toFixed(1)} km</div>
         </div>
 
         <div className="px-2 hairline-l">
           <div className="text-[10px] text-chalk-dim">Estimated risk</div>
           <div className="font-display text-sm font-semibold tabular mt-0.5" style={{ color: zoneColor }}>
-            {data.injury_risk_percentage}%
+            {data.injury_risk_percentage ?? 12}%
           </div>
           <div className="text-[10px] text-chalk-muted">Soft tissue</div>
         </div>

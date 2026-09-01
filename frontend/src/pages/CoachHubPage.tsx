@@ -265,6 +265,7 @@ export const CoachHubPage: React.FC = () => {
               e.preventDefault();
               handleSend();
             }}
+            noValidate
             className="p-3 hairline-t bg-night flex gap-2"
           >
             <input

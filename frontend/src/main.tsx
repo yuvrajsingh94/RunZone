@@ -3,17 +3,20 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 );
 

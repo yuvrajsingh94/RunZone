@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { PasswordStrengthIndicator } from '../components/auth/PasswordStrengthIndicator';
+import { FieldError } from '../components/common/FieldError';
+import { validatePasswordField, validateRequired } from '../utils/validation';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -10,7 +12,7 @@ export const ResetPasswordPage: React.FC = () => {
   const [token, setToken] = useState(searchParams.get('token') || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -20,17 +22,33 @@ export const ResetPasswordPage: React.FC = () => {
     if (urlToken) setToken(urlToken);
   }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
 
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    const tokenErr = validateRequired(token, 'Reset token');
+    if (tokenErr) {
+      newErrors.token = tokenErr;
     }
 
-    if (!token.trim()) {
-      setError('A reset token is required');
+    const passwordErr = validatePasswordField(newPassword, true);
+    if (passwordErr) {
+      newErrors.newPassword = passwordErr;
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Confirm new password is required';
+    } else if (newPassword !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
       return;
     }
 
@@ -44,9 +62,20 @@ export const ResetPasswordPage: React.FC = () => {
       setSuccess(true);
       toast.success('Password updated successfully');
     } catch (err: any) {
-      setError(err.message || 'Password reset failed. The token may be expired.');
+      toast.error(err.message || 'Password reset failed. The token may be expired.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFieldChange = (field: string, value: string, setter: (v: string) => void) => {
+    setter(value);
+    if (errors[field]) {
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[field];
+        return updated;
+      });
     }
   };
 
@@ -63,7 +92,7 @@ export const ResetPasswordPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-panel border border-hairline p-6 space-y-4">
+        <div className="bg-panel border border-hairline p-6 space-y-4 shadow-2xl">
           {success ? (
             <div className="space-y-3 text-center text-xs">
               <div className="font-display font-semibold text-sm text-chalk">
@@ -80,13 +109,7 @@ export const ResetPasswordPage: React.FC = () => {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              {error && (
-                <div className="p-3 bg-night border border-hairline text-xs text-cinder leading-relaxed">
-                  {error}
-                </div>
-              )}
-
+            <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
               <div>
                 <label className="block text-xs font-medium text-chalk-muted mb-1">
                   Reset token
@@ -94,11 +117,15 @@ export const ResetPasswordPage: React.FC = () => {
                 <input
                   type="text"
                   value={token}
-                  onChange={(e) => setToken(e.target.value)}
+                  onChange={(e) => handleFieldChange('token', e.target.value, setToken)}
                   placeholder="Paste reset token"
-                  required
-                  className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk tabular focus:outline-none focus:border-cinder"
+                  className={`w-full px-3 py-2 bg-night text-xs text-chalk tabular focus:outline-none transition-colors border ${
+                    errors.token
+                      ? 'border-[#C1432E] focus:border-[#C1432E]'
+                      : 'border-hairline focus:border-cinder'
+                  }`}
                 />
+                <FieldError error={errors.token} />
               </div>
 
               <div>
@@ -108,10 +135,14 @@ export const ResetPasswordPage: React.FC = () => {
                 <input
                   type="password"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk focus:outline-none focus:border-cinder"
+                  onChange={(e) => handleFieldChange('newPassword', e.target.value, setNewPassword)}
+                  className={`w-full px-3 py-2 bg-night text-xs text-chalk focus:outline-none transition-colors border ${
+                    errors.newPassword
+                      ? 'border-[#C1432E] focus:border-[#C1432E]'
+                      : 'border-hairline focus:border-cinder'
+                  }`}
                 />
+                <FieldError error={errors.newPassword} />
                 <PasswordStrengthIndicator password={newPassword} />
               </div>
 
@@ -122,15 +153,19 @@ export const ResetPasswordPage: React.FC = () => {
                 <input
                   type="password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-night border border-hairline text-xs text-chalk focus:outline-none focus:border-cinder"
+                  onChange={(e) => handleFieldChange('confirmPassword', e.target.value, setConfirmPassword)}
+                  className={`w-full px-3 py-2 bg-night text-xs text-chalk focus:outline-none transition-colors border ${
+                    errors.confirmPassword
+                      ? 'border-[#C1432E] focus:border-[#C1432E]'
+                      : 'border-hairline focus:border-cinder'
+                  }`}
                 />
+                <FieldError error={errors.confirmPassword} />
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !newPassword || !confirmPassword || !token}
+                disabled={loading}
                 className="w-full py-2.5 bg-cinder hover:bg-cinder-hover disabled:opacity-50 text-chalk font-medium text-xs transition-colors flex items-center justify-center gap-2 mt-2"
               >
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Update password</span>}

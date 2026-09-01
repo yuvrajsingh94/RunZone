@@ -132,7 +132,7 @@ export const CoachChatDrawer: React.FC<CoachChatDrawerProps> = ({ isOpen, onClos
         </div>
 
         {/* Input Bar */}
-        <form onSubmit={handleSend} className="p-3 hairline-t bg-night flex gap-2">
+        <form onSubmit={handleSend} noValidate className="p-3 hairline-t bg-night flex gap-2">
           <input
             type="text"
             value={input}

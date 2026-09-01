@@ -86,10 +86,14 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
     if (!mapContainerRef.current || mapRef.current) return;
 
     let coords: [number, number][] = [];
-    if (activity.geojson_data && activity.geojson_data.coordinates) {
+    if (
+      activity.geojson_data &&
+      Array.isArray(activity.geojson_data.coordinates) &&
+      activity.geojson_data.coordinates.length >= 2
+    ) {
       coords = activity.geojson_data.coordinates as [number, number][];
     } else {
-      // Default San Francisco Waterfront polyline
+      // Safe Default San Francisco Waterfront polyline
       coords = [
         [-122.3937, 37.7955],
         [-122.3948, 37.7968],
@@ -104,8 +108,9 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
       ];
     }
 
-    const centerLng = coords[Math.floor(coords.length / 2)][0];
-    const centerLat = coords[Math.floor(coords.length / 2)][1];
+    const midIdx = Math.floor(coords.length / 2);
+    const centerLng = coords[midIdx]?.[0] ?? -122.4194;
+    const centerLat = coords[midIdx]?.[1] ?? 37.7749;
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,

@@ -21,6 +21,7 @@ import { LogRunModal } from './components/activity/LogRunModal';
 import { GPXUploadModal } from './components/activity/GPXUploadModal';
 import { LiveRunModal } from './components/tracker/LiveRunModal';
 import { PWAInstallBanner } from './components/common/PWAInstallBanner';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
@@ -56,62 +57,64 @@ export default function App() {
         {!isAuthOrLandingPage && <Sidebar />}
 
         <main className="flex-1 bg-night overflow-y-auto">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/landing" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <ErrorBoundary fallbackTitle="Page Load Error" fallbackMessage="An error occurred while rendering this view. Your session and activity data are safe.">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-            {/* Authenticated Routes or Redirect to Landing */}
-            <Route
-              path="/"
-              element={
-                isAuthenticated ? (
-                  <Dashboard
-                    onOpenSimulate={() => setSimulateOpen(true)}
-                    onOpenManual={() => setManualOpen(true)}
-                    onOpenGPX={() => setGpxOpen(true)}
-                  />
-                ) : (
-                  <Navigate to="/landing" replace />
-                )
-              }
-            />
-
-            <Route element={<ProtectedRoute />}>
+              {/* Authenticated Routes or Redirect to Landing */}
               <Route
-                path="/territories"
+                path="/"
                 element={
-                  <TerritoryWarRoom
-                    onOpenLiveTracker={() => setLiveTrackerOpen(true)}
-                    onOpenSimulate={() => setSimulateOpen(true)}
-                    onOpenGPX={() => setGpxOpen(true)}
-                  />
+                  isAuthenticated ? (
+                    <Dashboard
+                      onOpenSimulate={() => setSimulateOpen(true)}
+                      onOpenManual={() => setManualOpen(true)}
+                      onOpenGPX={() => setGpxOpen(true)}
+                    />
+                  ) : (
+                    <Navigate to="/landing" replace />
+                  )
                 }
               />
-              <Route path="/map" element={<Navigate to="/territories" replace />} />
-              <Route path="/territory" element={<Navigate to="/territories" replace />} />
-              <Route path="/warroom" element={<Navigate to="/territories" replace />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/coach" element={<CoachHubPage />} />
-              <Route
-                path="/activities"
-                element={
-                  <ActivitiesPage
-                    onOpenSimulate={() => setSimulateOpen(true)}
-                    onOpenManual={() => setManualOpen(true)}
-                    onOpenGPX={() => setGpxOpen(true)}
-                  />
-                }
-              />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-            </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route element={<ProtectedRoute />}>
+                <Route
+                  path="/territories"
+                  element={
+                    <TerritoryWarRoom
+                      onOpenLiveTracker={() => setLiveTrackerOpen(true)}
+                      onOpenSimulate={() => setSimulateOpen(true)}
+                      onOpenGPX={() => setGpxOpen(true)}
+                    />
+                  }
+                />
+                <Route path="/map" element={<Navigate to="/territories" replace />} />
+                <Route path="/territory" element={<Navigate to="/territories" replace />} />
+                <Route path="/warroom" element={<Navigate to="/territories" replace />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/coach" element={<CoachHubPage />} />
+                <Route
+                  path="/activities"
+                  element={
+                    <ActivitiesPage
+                      onOpenSimulate={() => setSimulateOpen(true)}
+                      onOpenManual={() => setManualOpen(true)}
+                      onOpenGPX={() => setGpxOpen(true)}
+                    />
+                  }
+                />
+                <Route path="/leaderboard" element={<LeaderboardPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+              </Route>
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -147,14 +150,16 @@ export default function App() {
           style: {
             background: '#1B2023',
             color: '#EDEEE7',
-            border: '1px solid rgba(237, 238, 231, 0.12)',
+            border: '1px solid rgba(237, 238, 231, 0.14)',
             borderRadius: '2px',
             fontSize: '12px',
             fontFamily: 'Inter, sans-serif',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+            padding: '10px 14px',
           },
           success: {
             iconTheme: {
-              primary: '#B8492E',
+              primary: '#3E8E7E',
               secondary: '#1B2023',
             },
           },

@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.rate_limiter import rate_limit
 from app.models.user import User
 from app.schemas.auth import (
     UserRegister,
@@ -24,7 +25,12 @@ from app.services.auth_service import AuthService
 router = APIRouter(prefix="/auth", tags=["Authentication & Security"])
 
 
-@router.post("/register", response_model=APIResponse[TokenResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=APIResponse[TokenResponse],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("register", max_requests=5, window_seconds=60))],
+)
 async def register(
     payload: UserRegister,
     request: Request,
@@ -62,7 +68,11 @@ async def verify_email(
     )
 
 
-@router.post("/resend-verification", response_model=APIResponse[dict])
+@router.post(
+    "/resend-verification",
+    response_model=APIResponse[dict],
+    dependencies=[Depends(rate_limit("resend-verification", max_requests=3, window_seconds=60))],
+)
 async def resend_verification(
     payload: ResendVerificationRequest,
     db: AsyncSession = Depends(get_db),
@@ -78,7 +88,11 @@ async def resend_verification(
     )
 
 
-@router.post("/login", response_model=APIResponse[TokenResponse])
+@router.post(
+    "/login",
+    response_model=APIResponse[TokenResponse],
+    dependencies=[Depends(rate_limit("login", max_requests=10, window_seconds=60))],
+)
 async def login(
     payload: UserLogin,
     request: Request,
@@ -137,7 +151,11 @@ async def logout(
     )
 
 
-@router.post("/forgot-password", response_model=APIResponse[dict])
+@router.post(
+    "/forgot-password",
+    response_model=APIResponse[dict],
+    dependencies=[Depends(rate_limit("forgot-password", max_requests=3, window_seconds=60))],
+)
 async def forgot_password(
     payload: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),

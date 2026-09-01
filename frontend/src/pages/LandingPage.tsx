@@ -6,11 +6,13 @@ import { TerritoryGeoJSONCollection, ACWRDashboardSummary } from '../types';
 import { TerritoryMap } from '../components/map/TerritoryMap';
 import { ACWRGauge } from '../components/analytics/ACWRGauge';
 import { Play, Shield, MapPin, Activity, ArrowRight, Zap, Check } from 'lucide-react';
+import { PrivacyModal } from '../components/common/PrivacyModal';
 import toast from 'react-hot-toast';
 
 export const LandingPage: React.FC = () => {
   const [territories, setTerritories] = useState<TerritoryGeoJSONCollection | null>(null);
   const [acwrData, setAcwrData] = useState<ACWRDashboardSummary | null>(null);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const { loginDemoUser } = useAuth();
   const navigate = useNavigate();
 
@@ -215,11 +217,19 @@ export const LandingPage: React.FC = () => {
             <span className="font-display font-semibold text-chalk">RunZone</span>
             <span className="text-chalk-dim">· PostGIS & ACWR Engine</span>
           </div>
-          <div>
-            Built with FastAPI, PostgreSQL/PostGIS, React & Gemini AI.
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setPrivacyOpen(true)}
+              className="text-chalk-dim hover:text-chalk underline underline-offset-4 transition-colors"
+            >
+              Privacy & Telemetry Disclosure
+            </button>
+            <span>Built with FastAPI, PostgreSQL/PostGIS, React & Groq AI</span>
           </div>
         </div>
       </footer>
+
+      <PrivacyModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </div>
   );
 };

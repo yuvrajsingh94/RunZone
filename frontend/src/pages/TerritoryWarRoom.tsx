@@ -4,6 +4,7 @@ import { TerritoryGeoJSONCollection } from '../types';
 import { TerritoryMap } from '../components/map/TerritoryMap';
 import { RoutePlannerModal } from '../components/map/RoutePlannerModal';
 import { useTerritoryRealtime } from '../hooks/useTerritoryRealtime';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { RefreshCw, Play, Radio, Shield, MapPin, Zap, Route } from 'lucide-react';
 
 interface TerritoryWarRoomProps {
@@ -107,11 +108,13 @@ export const TerritoryWarRoom: React.FC<TerritoryWarRoomProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Full-height Map */}
         <div className="lg:col-span-8">
-          <TerritoryMap
-            territories={territories}
-            height="580px"
-            onZoneSelect={(zone) => setSelectedZone(zone)}
-          />
+          <ErrorBoundary isWidget={true} fallbackTitle="Territory Map Unavailable">
+            <TerritoryMap
+              territories={territories}
+              height="580px"
+              onZoneSelect={(zone) => setSelectedZone(zone)}
+            />
+          </ErrorBoundary>
         </div>
 
         {/* Tactical Telemetry & Sector Detail Sidebar */}

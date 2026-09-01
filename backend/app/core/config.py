@@ -1,6 +1,6 @@
 import os
-from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from typing import List, Union, Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
+    DEBUG: bool = False
+    ENABLE_PUBLIC_DOCS: bool = True  # Public /docs for portfolio exploration; set False in strict enterprise prod
     
     # Database
     POSTGRES_USER: str = "runzone_admin"
@@ -73,7 +75,7 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, list):
             return v
-        return ["*"]
+        return ["http://localhost:5173", "http://localhost:5174"]
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),

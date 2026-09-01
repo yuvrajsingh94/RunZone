@@ -119,10 +119,11 @@ async def claim_territory(
 
 @router.post("/decay/trigger", response_model=APIResponse[List[dict]])
 async def trigger_territory_decay_sweep(
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Executes a territory decay sweep:
+    Executes a territory decay sweep (Authenticated):
     Sectors unrun for >7 days lose 15 defense points per day.
     Sectors hitting 0 defense points become neutral/unclaimed.
     """
