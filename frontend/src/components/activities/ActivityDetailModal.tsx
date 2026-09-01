@@ -40,7 +40,7 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
-  const VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
+  const VECTOR_STYLE_URL = 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json';
 
   if (!isOpen || !activity) return null;
 

@@ -35,8 +35,8 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   const [locating, setLocating] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // OpenFreeMap Dark Style - free, no API key, reliable in production
-  const VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
+  // Stadia Maps Alidade Smooth Dark - free, no API key needed, proven reliable
+  const VECTOR_STYLE_URL = 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json';
 
   // Helper to generate dynamic local sectors around user coordinates
   const generateLocalSectors = (lat: number, lng: number): TerritoryGeoJSONCollection => {

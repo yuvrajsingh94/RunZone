@@ -24,8 +24,8 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
   const [targetPaceMinKm, setTargetPaceMinKm] = useState<number>(5.5); // 5:30 min/km
   const [routeName, setRouteName] = useState<string>('Tactical Perimeter Route');
 
-  // OpenFreeMap Dark Style - free, no API key, reliable in production
-  const VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
+  // Stadia Maps Alidade Smooth Dark - free, no API key needed, proven reliable
+  const VECTOR_STYLE_URL = 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json';
 
   // Haversine distance calculator
   const calculateTotalDistanceKm = (pts: [number, number][]): number => {
