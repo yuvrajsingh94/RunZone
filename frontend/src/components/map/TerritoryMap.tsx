@@ -35,8 +35,8 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   const [locating, setLocating] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Stadia Maps Alidade Smooth Dark - free, no API key needed, proven reliable
-  const VECTOR_STYLE_URL = 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json';
+  const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
   // Helper to generate dynamic local sectors around user coordinates
   const generateLocalSectors = (lat: number, lng: number): TerritoryGeoJSONCollection => {
@@ -140,43 +140,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     // MapLibre uses [lng, lat] coordinate order
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          'esri-satellite': {
-            type: 'raster',
-            tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            ],
-            tileSize: 256,
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
-          },
-          'esri-labels': {
-            type: 'raster',
-            tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-            ],
-            tileSize: 256,
-          },
-        },
-        layers: [
-          {
-            id: 'esri-satellite-layer',
-            type: 'raster',
-            source: 'esri-satellite',
-            minzoom: 0,
-            maxzoom: 23,
-          },
-          {
-            id: 'esri-labels-layer',
-            type: 'raster',
-            source: 'esri-labels',
-            minzoom: 0,
-            maxzoom: 23,
-          },
-        ],
-        glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
-      },
+      style: VECTOR_STYLE_URL,
       center: [initialLng, initialLat],
       zoom: zoom,
       pitch: 0,
