@@ -41,7 +41,7 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`;
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
   if (!isOpen || !activity) return null;
 
@@ -124,8 +124,6 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
     });
 
     map.on('load', () => {
-      map.resize();
-      setTimeout(() => map.resize(), 150);
       // Add Source
       map.addSource('activity-track', {
         type: 'geojson',
@@ -172,6 +170,13 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
       const endEl = document.createElement('div');
       endEl.className = 'w-3.5 h-3.5 rounded-full bg-[#B8492E] border-2 border-white';
       new maplibregl.Marker({ element: endEl }).setLngLat(coords[coords.length - 1]).addTo(map);
+
+      map.resize();
+      setTimeout(() => map.resize(), 150);
+    });
+
+    map.on('error', (e) => {
+      console.warn('MapLibre GL Notice:', e);
     });
 
     mapRef.current = map;

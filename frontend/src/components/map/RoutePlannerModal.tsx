@@ -25,7 +25,7 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
   const [routeName, setRouteName] = useState<string>('Tactical Perimeter Route');
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`;
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
   // Haversine distance calculator
   const calculateTotalDistanceKm = (pts: [number, number][]): number => {
@@ -82,18 +82,12 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
     map.on('load', () => {
-      map.resize();
-      setTimeout(() => map.resize(), 150);
       // Add Route Line Source
       map.addSource('planned-route-source', {
         type: 'geojson',
         data: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: [],
-          },
+          type: 'FeatureCollection',
+          features: [],
         },
       });
 
@@ -129,6 +123,13 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
       });
 
       map.getCanvas().style.cursor = 'crosshair';
+
+      map.resize();
+      setTimeout(() => map.resize(), 150);
+    });
+
+    map.on('error', (e) => {
+      console.warn('MapLibre GL Notice:', e);
     });
 
     mapRef.current = map;
@@ -144,14 +145,21 @@ export const RoutePlannerModal: React.FC<RoutePlannerModalProps> = ({
     if (!mapRef.current) return;
     const source = mapRef.current.getSource('planned-route-source') as maplibregl.GeoJSONSource;
     if (source) {
-      source.setData({
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: waypoints,
-        },
-      });
+      if (waypoints.length >= 2) {
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: waypoints,
+          },
+        });
+      } else {
+        source.setData({
+          type: 'FeatureCollection',
+          features: [],
+        });
+      }
     }
 
     // Clean old markers

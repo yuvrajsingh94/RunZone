@@ -36,7 +36,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || 'PN0TxMEOhCAGQMwlU7zv';
-  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_KEY}`;
+  const VECTOR_STYLE_URL = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
   // Helper to generate dynamic local sectors around user coordinates
   const generateLocalSectors = (lat: number, lng: number): TerritoryGeoJSONCollection => {
@@ -162,8 +162,6 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
 
     map.on('load', () => {
       setMapLoaded(true);
-      map.resize();
-      setTimeout(() => map.resize(), 150);
 
       // Determine starting territory dataset
       let initialData: any = territories;
@@ -218,13 +216,16 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       // 4. Source & Layer for Active Running Polyline Corridor
       map.addSource('active-run-source', {
         type: 'geojson',
-        data: {
+        data: (activePolyline && activePolyline.length >= 2) ? {
           type: 'Feature',
           properties: {},
           geometry: {
             type: 'LineString',
-            coordinates: activePolyline || [],
+            coordinates: activePolyline,
           },
+        } : {
+          type: 'FeatureCollection',
+          features: [],
         },
       });
 
@@ -301,11 +302,23 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       map.on('mouseleave', 'territories-fill', () => {
         map.getCanvas().style.cursor = '';
       });
+
+      // Ensure map renders to full container dimensions
+      map.resize();
+      setTimeout(() => map.resize(), 150);
+    });
+
+    map.on('error', (e) => {
+      console.warn('MapLibre GL Notice:', e);
     });
 
     mapRef.current = map;
 
+    const handleWindowResize = () => map.resize();
+    window.addEventListener('resize', handleWindowResize);
+
     return () => {
+      window.removeEventListener('resize', handleWindowResize);
       map.remove();
       mapRef.current = null;
     };
@@ -324,18 +337,23 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   useEffect(() => {
     if (!mapRef.current || !mapLoaded) return;
     const source = mapRef.current.getSource('active-run-source') as maplibregl.GeoJSONSource;
-    if (source && activePolyline) {
-      source.setData({
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: activePolyline,
-        },
-      });
-      if (activePolyline.length > 0) {
+    if (source) {
+      if (activePolyline && activePolyline.length >= 2) {
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: activePolyline,
+          },
+        });
         const lastPt = activePolyline[activePolyline.length - 1];
         mapRef.current.panTo([lastPt[0], lastPt[1]], { duration: 500 });
+      } else {
+        source.setData({
+          type: 'FeatureCollection',
+          features: [],
+        });
       }
     }
   }, [activePolyline, mapLoaded]);
