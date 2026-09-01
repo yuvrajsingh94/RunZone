@@ -3,6 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
+# Configure connect_args for asyncpg to support Supabase pooler / PgBouncer
+connect_args = {}
+if "asyncpg" in settings.DATABASE_URL:
+    connect_args = {
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+    }
+
 # Async Engine for FastAPI async handlers configured for serverless/managed Postgres
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -12,6 +20,7 @@ engine = create_async_engine(
     max_overflow=10,
     pool_recycle=300,
     pool_pre_ping=True,
+    connect_args=connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(
