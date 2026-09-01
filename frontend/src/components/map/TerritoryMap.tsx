@@ -20,8 +20,8 @@ interface TerritoryMapProps {
 export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   territories,
   activePolyline,
-  center = [37.7749, -122.4194], // Default [lat, lon]
-  zoom = 13,
+  center = [28.5209, 77.2806], // Default [lat, lon] - New Delhi
+  zoom = 13.5,
   height = '540px',
   onZoneSelect,
   fullBleed = false,
@@ -134,6 +134,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       if (savedLoc.lat && savedLoc.lng) {
         initialLat = savedLoc.lat;
         initialLng = savedLoc.lng;
+        setUserCoords({ lat: initialLat, lng: initialLng });
       }
     } catch (e) {}
 
@@ -163,6 +164,14 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     map.on('load', () => {
       setMapLoaded(true);
 
+      // Add user pin marker on load
+      const el = document.createElement('div');
+      el.className = 'w-6 h-6 rounded-full bg-cinder border-2 border-white flex items-center justify-center shadow-lg animate-pulse';
+      el.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span>';
+      userMarkerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat([initialLng, initialLat])
+        .addTo(map);
+
       // Determine starting territory dataset
       let initialData: any = territories;
       if (!initialData || !initialData.features || initialData.features.length === 0) {
@@ -183,15 +192,15 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
         paint: {
           'fill-color': [
             'case',
-            ['get', 'is_user_owned'],
+            ['boolean', ['get', 'is_user_owned'], false],
             '#B8492E', // Cinder red
             '#3E8E7E', // Contour emerald
           ],
           'fill-opacity': [
             'case',
-            ['get', 'is_user_owned'],
-            0.35,
-            0.22,
+            ['boolean', ['get', 'is_user_owned'], false],
+            0.45,
+            0.30,
           ],
         },
       });
@@ -204,12 +213,12 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
         paint: {
           'line-color': [
             'case',
-            ['<', ['get', 'defense_points'], 40],
+            ['<', ['coalesce', ['get', 'defense_points'], 50], 40],
             '#C98A2E', // Amber for contested
-            ['case', ['get', 'is_user_owned'], '#E05A3B', '#4EA896'],
+            ['case', ['boolean', ['get', 'is_user_owned'], false], '#E05A3B', '#4EA896'],
           ],
-          'line-width': ['case', ['get', 'is_user_owned'], 2.5, 1.8],
-          'line-opacity': 0.9,
+          'line-width': ['case', ['boolean', ['get', 'is_user_owned'], false], 3.0, 2.0],
+          'line-opacity': 0.95,
         },
       });
 
