@@ -1,11 +1,13 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, GeoJSON, Polyline, CircleMarker, useMap } from 'react-leaflet';
+﻿import React, { useState, useCallback } from 'react';
 import { TerritoryGeoJSONCollection } from '../../types';
-import { Crosshair, Loader2, Maximize2, MapPin } from 'lucide-react';
+import { TerritoryMap2D } from './TerritoryMap2D';
+import { TerritoryMap3D } from './TerritoryMap3D';
+import { Crosshair, Loader2, Maximize2, Layers, Box } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { acquireLiveLocation, isSecureContext } from '../../utils/geoService';
 import { generateDynamicLocalSectors } from '../../utils/mapConfig';
-import 'leaflet/dist/leaflet.css';
+
+export type MapDisplayMode = '2d' | '3d';
 
 interface TerritoryMapProps {
   territories: TerritoryGeoJSONCollection | null;
@@ -19,26 +21,9 @@ interface TerritoryMapProps {
   onLocationFound?: (lat: number, lng: number) => void;
 }
 
-// Controller component to handle programmatic camera pan/zoom in Leaflet
-const MapViewController: React.FC<{
-  targetCoords: { lat: number; lng: number } | null;
-  zoomLevel: number;
-}> = ({ targetCoords, zoomLevel }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (targetCoords) {
-      map.flyTo([targetCoords.lat, targetCoords.lng], zoomLevel, {
-        animate: true,
-        duration: 1.5,
-      });
-    }
-  }, [targetCoords, zoomLevel, map]);
-  return null;
-};
-
 export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   territories,
-  activePolyline,
+  activePolyline = [],
   center = [28.5209, 77.2806], // Default New Delhi [lat, lon]
   zoom = 15,
   height = '540px',
@@ -46,7 +31,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
   fullBleed = false,
   onLocationFound,
 }) => {
-  // Read initial saved location if available
+  // Read initial saved location from localStorage if available
   let initialLat = center[0];
   let initialLng = center[1];
   try {
@@ -57,19 +42,20 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     }
   } catch (e) {}
 
+  const [mapMode, setMapMode] = useState<MapDisplayMode>('2d');
   const [currentCenter, setCurrentCenter] = useState<{ lat: number; lng: number }>({
     lat: initialLat,
     lng: initialLng,
   });
+  const [currentZoom, setCurrentZoom] = useState<number>(zoom);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>({
     lat: initialLat,
     lng: initialLng,
   });
   const [locating, setLocating] = useState<boolean>(false);
-  const [currentZoom, setCurrentZoom] = useState<number>(zoom);
 
-  // Active polyline in Leaflet [lat, lon] format (from GeoJSON [lon, lat])
-  const formattedPolyline: [number, number][] = (activePolyline || []).map((pt) => [pt[1], pt[0]]);
+  // Active polyline in Leaflet format [[lat, lon], ...]
+  const formatted2DPolyline: [number, number][] = activePolyline.map((pt) => [pt[1], pt[0]]);
 
   // Dataset of territory polygons
   const territoriesData =
@@ -77,51 +63,35 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       ? territories
       : generateDynamicLocalSectors(currentCenter.lat, currentCenter.lng);
 
-  // Style callback for territory polygons
-  const getFeatureStyle = (feature: any) => {
-    const isUserOwned = feature?.properties?.is_user_owned;
-    const defense = feature?.properties?.defense_points || 50;
-    const isContested = defense < 40;
+  // Synchronize camera state when user pans/zooms in either map mode
+  const handleMapMoveEnd = useCallback((lat: number, lng: number, newZoom: number) => {
+    setCurrentCenter({ lat, lng });
+    setCurrentZoom(newZoom);
+  }, []);
 
-    return {
-      fillColor: isUserOwned ? '#B8492E' : '#3E8E7E',
-      fillOpacity: 0.35,
-      color: isContested ? '#C98A2E' : isUserOwned ? '#E05A3B' : '#4EA896',
-      weight: isUserOwned ? 3 : 2,
-      opacity: 0.9,
-    };
+  // Handle 3D mode switch with safe fallback
+  const handleModeChange = (mode: MapDisplayMode) => {
+    if (mode === '3d') {
+      // Check WebGL support before switching
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) {
+        toast.error('3D Terrain requires WebGL hardware acceleration, which is unavailable on this browser.', {
+          duration: 4000,
+        });
+        return;
+      }
+      toast('Entering 3D Terrain Mode · Right-click or drag to tilt & rotate', { icon: '🏔️' });
+    }
+    setMapMode(mode);
   };
 
-  // Interactive popup on each sector feature
-  const onEachFeature = (feature: any, layer: any) => {
-    const props = feature.properties || {};
-    const popupContent = `
-      <div style="font-family: 'Inter', sans-serif; color: #111827; padding: 4px; min-width: 170px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-          <strong style="font-size: 13px; color: #111827;">${props.zone_name || 'Sector Zone'}</strong>
-          <span style="font-size: 10px; padding: 1px 5px; background: ${
-            props.is_user_owned ? '#B8492E20' : '#3E8E7E20'
-          }; color: ${props.is_user_owned ? '#B8492E' : '#3E8E7E'}; font-weight: bold; border-radius: 2px;">
-            ${props.owner_username || 'Athlete'}
-          </span>
-        </div>
-        <div style="font-size: 11px; color: #4B5563; line-height: 1.5; border-top: 1px solid #E5E7EB; padding-top: 4px;">
-          <div>Area: <strong>${Number(props.area_km2 || 0.85).toFixed(3)} km²</strong></div>
-          <div>Defense: <strong>${props.defense_points || 88}/100</strong></div>
-          <div style="color: ${props.is_user_owned ? '#B8492E' : '#3E8E7E'}; font-weight: bold; margin-top: 2px;">
-            ${props.is_user_owned ? 'Your Territory' : 'Rival Sector'}
-          </div>
-        </div>
-      </div>
-    `;
-    layer.bindPopup(popupContent);
-
-    layer.on({
-      click: () => {
-        if (onZoneSelect) onZoneSelect(props);
-      },
-    });
-  };
+  // Fallback handler if 3D initialization fails
+  const handle3DError = useCallback((errMessage: string) => {
+    console.warn('[RunZone 3D Fallback]', errMessage);
+    toast.error(`3D map unavailable: ${errMessage}. Reverting to 2D tactical map.`, { duration: 4000 });
+    setMapMode('2d');
+  }, []);
 
   // Production-grade Geolocation with dual-pass accuracy and managed toasts
   const fetchLiveLocation = async () => {
@@ -167,9 +137,12 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     }
   };
 
+  // Re-center map to user coordinates or default center
   const resetCenter = () => {
-    setCurrentCenter({ lat: initialLat, lng: initialLng });
-    setCurrentZoom(15);
+    const targetLat = userCoords ? userCoords.lat : initialLat;
+    const targetLng = userCoords ? userCoords.lng : initialLng;
+    setCurrentCenter({ lat: targetLat, lng: targetLng });
+    setCurrentZoom(15.5);
   };
 
   return (
@@ -183,7 +156,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       <div className="absolute top-3 left-3 z-[1000] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
         <div className="flex items-center gap-1.5 text-chalk font-display font-semibold">
           <span className="w-2 h-2 rounded-full bg-cinder inline-block animate-pulse" />
-          <span>Live Tactical Grid · OpenStreetMap</span>
+          <span>{mapMode === '3d' ? '3D WebGL Terrain Mode' : '2D Tactical Grid · OpenStreetMap'}</span>
         </div>
         <div className="h-3 w-px bg-hairline-strong" />
         <span className="text-chalk-muted font-display tabular text-[11px]">
@@ -191,8 +164,37 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
         </span>
       </div>
 
-      {/* Top Right Tactical Controls */}
-      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5">
+      {/* Top Right Tactical Controls: Mode Switcher + Locate + Re-center */}
+      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2">
+        {/* 2D / 3D Segmented Switcher */}
+        <div className="bg-night/95 backdrop-blur-md border border-hairline p-0.5 flex items-center shadow-md">
+          <button
+            onClick={() => handleModeChange('2d')}
+            className={`px-2.5 py-1 text-xs font-display font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mapMode === '2d'
+                ? 'bg-cinder text-chalk shadow-sm'
+                : 'text-chalk-muted hover:text-chalk hover:bg-panel'
+            }`}
+            title="Switch to standard 2D tactical map"
+          >
+            <Layers className="w-3 h-3" />
+            <span>2D Map</span>
+          </button>
+          <button
+            onClick={() => handleModeChange('3d')}
+            className={`px-2.5 py-1 text-xs font-display font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mapMode === '3d'
+                ? 'bg-cinder text-chalk shadow-sm'
+                : 'text-chalk-muted hover:text-chalk hover:bg-panel'
+            }`}
+            title="Switch to 3D terrain elevation map"
+          >
+            <Box className="w-3 h-3" />
+            <span>3D Terrain</span>
+          </button>
+        </div>
+
+        {/* Locate Me Button */}
         <button
           onClick={fetchLiveLocation}
           disabled={locating}
@@ -207,6 +209,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
           <span>{locating ? 'Acquiring GPS…' : 'Locate Me'}</span>
         </button>
 
+        {/* Re-center Button */}
         <button
           onClick={resetCenter}
           className="p-1.5 bg-night/90 hover:bg-panel border border-hairline text-chalk-muted hover:text-chalk transition-colors shadow-md cursor-pointer"
@@ -216,70 +219,32 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
         </button>
       </div>
 
-      {/* Leaflet Map Engine */}
-      <MapContainer
-        center={[initialLat, initialLng]}
-        zoom={zoom}
-        scrollWheelZoom={true}
-        className="w-full h-full"
-      >
-        <MapViewController targetCoords={currentCenter} zoomLevel={currentZoom} />
-
-        {/* Crisp OpenStreetMap Basemap Layer */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
+      {/* Render 2D Leaflet Map (Default & Safe Fallback) */}
+      {mapMode === '2d' && (
+        <TerritoryMap2D
+          center={currentCenter}
+          zoom={currentZoom}
+          userCoords={userCoords}
+          territoriesData={territoriesData}
+          formattedPolyline={formatted2DPolyline}
+          onZoneSelect={onZoneSelect}
+          onMoveEnd={handleMapMoveEnd}
         />
+      )}
 
-        {/* Territory Sectors GeoJSON Layer */}
-        <GeoJSON
-          key={`territories-${currentCenter.lat}-${currentCenter.lng}-${territoriesData?.features?.length || 0}`}
-          data={territoriesData as any}
-          style={getFeatureStyle}
-          onEachFeature={onEachFeature}
+      {/* Render 3D MapLibre WebGL Terrain Map */}
+      {mapMode === '3d' && (
+        <TerritoryMap3D
+          center={currentCenter}
+          zoom={currentZoom}
+          userCoords={userCoords}
+          territoriesData={territoriesData}
+          activePolyline={activePolyline}
+          onZoneSelect={onZoneSelect}
+          onMoveEnd={handleMapMoveEnd}
+          onError={handle3DError}
         />
-
-        {/* Active Run Corridor Polyline */}
-        {formattedPolyline.length > 1 && (
-          <>
-            {/* 40m Buffered Glow Path */}
-            <Polyline
-              positions={formattedPolyline}
-              pathOptions={{
-                color: '#B8492E',
-                weight: 18,
-                opacity: 0.35,
-                lineCap: 'round',
-                lineJoin: 'round',
-              }}
-            />
-            {/* Sharp Core Polyline */}
-            <Polyline
-              positions={formattedPolyline}
-              pathOptions={{
-                color: '#FFFFFF',
-                weight: 3.5,
-                opacity: 0.95,
-              }}
-            />
-          </>
-        )}
-
-        {/* Athlete Location Marker */}
-        {userCoords && (
-          <CircleMarker
-            center={[userCoords.lat, userCoords.lng]}
-            radius={8}
-            pathOptions={{
-              color: '#FFFFFF',
-              fillColor: '#B8492E',
-              fillOpacity: 1,
-              weight: 2.5,
-            }}
-          />
-        )}
-      </MapContainer>
+      )}
     </div>
   );
 };
