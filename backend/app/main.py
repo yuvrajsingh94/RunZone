@@ -130,7 +130,7 @@ async def lifespan(app: FastAPI):
                     duration_secs = int(dist_meters / 3.3)  # ~5:00 min/km pace
                     rpe = 6 if day_offset % 4 != 0 else 8
                     
-                    workload = ACWRService.calculate_session_rpe_workload(duration_secs, rpe)
+                    workload = ACWRService.calculate_activity_workload(duration_secs, rpe)
                     coords = generate_simulated_run_track(
                         start_lat=37.7749 + (day_offset * 0.001),
                         start_lon=-122.4194 + (day_offset * 0.001),
