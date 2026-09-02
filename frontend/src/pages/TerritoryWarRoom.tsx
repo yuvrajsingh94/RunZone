@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import { TerritoryGeoJSONCollection } from '../types';
 import { TerritoryMap } from '../components/map/TerritoryMap';
-import { RoutePlannerModal } from '../components/map/RoutePlannerModal';
 import { useTerritoryRealtime } from '../hooks/useTerritoryRealtime';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { RefreshCw, Play, Radio, Shield, MapPin, Zap, Route } from 'lucide-react';
@@ -11,16 +10,17 @@ interface TerritoryWarRoomProps {
   onOpenLiveTracker?: () => void;
   onOpenSimulate: () => void;
   onOpenGPX: () => void;
+  onOpenRoutePlanner: () => void;
 }
 
 export const TerritoryWarRoom: React.FC<TerritoryWarRoomProps> = ({
   onOpenLiveTracker,
   onOpenSimulate,
   onOpenGPX,
+  onOpenRoutePlanner,
 }) => {
   const [territories, setTerritories] = useState<TerritoryGeoJSONCollection | null>(null);
   const [selectedZone, setSelectedZone] = useState<any>(null);
-  const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchTerritories = useCallback(async () => {
@@ -68,7 +68,7 @@ export const TerritoryWarRoom: React.FC<TerritoryWarRoomProps> = ({
         <div className="flex items-center gap-2">
           {/* Tactical Route Planner Trigger */}
           <button
-            onClick={() => setRoutePlannerOpen(true)}
+            onClick={onOpenRoutePlanner}
             className="bg-panel hover:bg-panel-light text-chalk border border-hairline text-xs font-medium px-3.5 py-1.5 transition-colors flex items-center gap-1.5"
           >
             <Route className="w-3.5 h-3.5 text-cinder" />
@@ -201,14 +201,6 @@ export const TerritoryWarRoom: React.FC<TerritoryWarRoomProps> = ({
         </div>
       </div>
 
-      {/* Tactical Route Planner Modal */}
-      <RoutePlannerModal
-        isOpen={routePlannerOpen}
-        onClose={() => setRoutePlannerOpen(false)}
-        onStartRouteInTracker={() => {
-          if (onOpenLiveTracker) onOpenLiveTracker();
-        }}
-      />
     </div>
   );
 };

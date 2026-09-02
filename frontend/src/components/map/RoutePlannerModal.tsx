@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from 'react-leaflet';
 import { Route, MapPin, Play, Download, Trash2, Undo2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -334,9 +334,10 @@ ${gpxPoints}
               <MapClickHandler onAddPoint={handleAddPoint} />
 
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 maxZoom={19}
+                subdomains="abcd"
               />
 
               {/* Waypoints Polyline Glow & Core */}

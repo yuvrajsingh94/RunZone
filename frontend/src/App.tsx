@@ -22,6 +22,7 @@ import { GPXUploadModal } from './components/activity/GPXUploadModal';
 import { LiveRunModal } from './components/tracker/LiveRunModal';
 import { PWAInstallBanner } from './components/common/PWAInstallBanner';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { RoutePlannerModal } from './components/map/RoutePlannerModal';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
   const [simulateOpen, setSimulateOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [gpxOpen, setGpxOpen] = useState(false);
+  const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
 
   const isAuthOrLandingPage = ['/login', '/register', '/forgot-password', '/reset-password', '/landing'].includes(location.pathname);
 
@@ -90,6 +92,7 @@ export default function App() {
                       onOpenLiveTracker={() => setLiveTrackerOpen(true)}
                       onOpenSimulate={() => setSimulateOpen(true)}
                       onOpenGPX={() => setGpxOpen(true)}
+                      onOpenRoutePlanner={() => setRoutePlannerOpen(true)}
                     />
                   }
                 />
@@ -138,6 +141,16 @@ export default function App() {
         isOpen={gpxOpen}
         onClose={() => setGpxOpen(false)}
         onSuccess={() => window.location.reload()}
+      />
+
+      {/* Route Planner — mounted at root to escape Leaflet stacking context in <main> */}
+      <RoutePlannerModal
+        isOpen={routePlannerOpen}
+        onClose={() => setRoutePlannerOpen(false)}
+        onStartRouteInTracker={() => {
+          setRoutePlannerOpen(false);
+          setLiveTrackerOpen(true);
+        }}
       />
 
       {/* PWA Mobile Install Prompt */}
