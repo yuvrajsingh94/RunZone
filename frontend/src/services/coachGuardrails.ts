@@ -178,7 +178,13 @@ export class CoachGuardrails {
       }
     }
 
-    // Must contain at least one in-domain keyword
+    // Short conversational messages (<= 6 words) like greetings or quick questions pass through
+    const wordCount = lowerMsg.split(/\s+/).length;
+    if (wordCount <= 6) {
+      return false;
+    }
+
+    // Must contain at least one in-domain keyword for longer messages
     const hasInDomain = this.IN_DOMAIN_PATTERNS.some((p) => p.test(lowerMsg));
     if (!hasInDomain) {
       return true;

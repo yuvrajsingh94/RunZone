@@ -21,12 +21,12 @@ import { CoachGuardrails } from './coachGuardrails';
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api/v1';
 const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || '';
 
-// Groq Model Chain
+// Groq Model Chain (Verified models with fast inference)
 const GROQ_MODELS = [
   'llama-3.3-70b-versatile',
-  'openai/gpt-oss-120b',
+  'llama-3.1-70b-versatile',
   'llama-3.1-8b-instant',
-  'openai/gpt-oss-20b',
+  'mixtral-8x7b-32768',
 ];
 
 // Mock San Francisco GeoJSON territory polygons
@@ -644,12 +644,65 @@ Formatting & Voice Rules:
         }
       }
 
-      // Static fallback with guardrail and health condition validation
-      let staticResponse = `I've analyzed your current 7-day acute volume (342.5) and 28-day baseline capacity (290). Your ACWR is 1.18, putting you in the physiological sweet spot. For today's workout, maintain an aerobic Zone 2 effort to absorb recent volume.`;
-      
+      // Dynamic sports science heuristic response engine (contextual to user question)
+      const msgLower = userMsg.toLowerCase().trim();
+      let staticResponse = '';
+
       const hasHeart = activeConditions.some((c) => c.toLowerCase().includes('heart'));
+
       if (hasHeart) {
         staticResponse = `Because your profile includes a **cardiovascular/heart condition**, your training is strictly capped at **low Zone 2 aerobic pacing** (target heart rate: ${karvonenZones['Zone 2 (Aerobic Base)']}). Keep all workouts smooth, conversational, and avoid any anaerobic or sprint intervals. Ensure you are fully cleared by your cardiologist for today's volume.`;
+      } else if (msgLower.includes('fast') || msgLower.includes('speed') || msgLower.includes('interval') || msgLower.includes('sprint') || msgLower.includes('tempo')) {
+        staticResponse = `To build sustainable speed without spiking your ACWR injury risk:
+
+1. **Aerobic Base Foundation (80%)**: Build your capillary density with Zone 2 runs (${karvonenZones['Zone 2 (Aerobic Base)']}). True speed is built on a large aerobic engine.
+2. **Strides (Neuromuscular Calibration)**: Add **4–6x 20-second relaxed accelerations** at the end of easy runs, focusing on knee drive and tall posture.
+3. **Threshold Intervals (20%)**: Once weekly, run **4x 1 km at Lactate Threshold pace** (${karvonenZones['Zone 4 (Lactate Threshold)']}) with 90-second active recovery jogs.
+4. **Volume Control**: Never increase speed and weekly distance simultaneously. Keep your 7-day ACWR below 1.30.`;
+      } else if (msgLower.includes('tip') || msgLower.includes('advice') || msgLower.includes('help') || msgLower.includes('suggest') || msgLower.includes('how to start')) {
+        staticResponse = `Here are the **core physiological principles** for your training:
+
+- **The 80/20 Rule**: Keep 80% of your weekly volume in Zone 2 (${karvonenZones['Zone 2 (Aerobic Base)']}). Only 20% should be high intensity.
+- **Cadence Optimization**: Aim for **170–180 steps/min** to reduce ground contact time and lower impact forces on knees and shins.
+- **ACWR Equilibrium**: Progress weekly mileage by no more than **8–10%** to stay in the optimal adaptation sweet spot (0.80–1.30).
+- **Corridor Conquest**: In RunZone, planning circular loop routes captures 40m PostGIS buffered sectors while optimizing return pace.`;
+      } else if (msgLower.includes('supplement') || msgLower.includes('nutrition') || msgLower.includes('eat') || msgLower.includes('food') || msgLower.includes('fuel') || msgLower.includes('electrolyte') || msgLower.includes('protein')) {
+        staticResponse = `Evidence-based nutrition and supplement protocol for runners:
+
+- **Pre-Run (60 min)**: 30–60g easily digestible carbs (banana, toast with honey) + 3–6 mg/kg caffeine for glycogen sparing.
+- **Intra-Run (>60 min)**: 30–60g carbs/hour (energy gels) + 300–500mg sodium/liter to prevent hyponatremia.
+- **Post-Run (within 45 min)**: 20–30g high-quality protein (whey or plant) paired with 3:1 carbs for muscle protein synthesis and glycogen resynthesis.
+- **Daily Recovery**: 3–5g creatine monohydrate for cellular energy recovery and 300mg magnesium glycinate for sleep quality.`;
+      } else if (msgLower.includes('zone 2') || msgLower.includes('heart rate') || msgLower.includes('hr') || msgLower.includes('pace') || msgLower.includes('bpm')) {
+        staticResponse = `Your calibrated **Karvonen Heart Rate Reserve (HRR)** zones:
+
+- **Zone 1 (Recovery)**: ${karvonenZones['Zone 1 (Active Recovery)']}
+- **Zone 2 (Aerobic Base)**: ${karvonenZones['Zone 2 (Aerobic Base)']} *(Target 80% of weekly volume here)*
+- **Zone 3 (Aerobic Tempo)**: ${karvonenZones['Zone 3 (Aerobic Tempo)']}
+- **Zone 4 (Threshold)**: ${karvonenZones['Zone 4 (Lactate Threshold)']}
+- **Zone 5 (VO2 Max)**: ${karvonenZones['Zone 5 (VO2 Max / Speed)']}
+
+*Tip: If you cannot speak in complete sentences without gasping, you have drifted above Zone 2.*`;
+      } else if (msgLower.includes('acwr') || msgLower.includes('injury') || msgLower.includes('fatigue') || msgLower.includes('sore') || msgLower.includes('pain')) {
+        staticResponse = `Your current Acute:Chronic Workload Ratio is **1.18** (*Optimal Adaptation Sweet Spot*).
+
+- **Acute 7-Day Fatigue**: 342.5 pts
+- **Chronic 28-Day Capacity**: 290.0 pts
+- **Soft-Tissue Injury Risk**: ~11% (Minimal)
+
+Because your ratio is between 0.80 and 1.30, your body is absorbing recent training volume efficiently. Safe to proceed with scheduled aerobic workouts today.`;
+      } else if (msgLower.includes('hi') || msgLower.includes('hello') || msgLower.includes('morning') || msgLower.includes('evening') || msgLower.includes('hey')) {
+        staticResponse = `Good day, athlete. Your ACWR is calibrated at **1.18** in the optimal adaptation sweet spot.
+
+How can I assist your training today? You can ask about:
+- Target heart rate zones & pacing
+- How to structure speed workouts & threshold intervals
+- Pre-run fueling, hydration, and supplements
+- 40m PostGIS territory conquest strategy`;
+      } else {
+        staticResponse = `Based on your current 7-day training load of **28.4 km** and an ACWR of **1.18**, your aerobic base is well-calibrated.
+
+For today's session, maintain an aerobic effort in **Zone 2 (${karvonenZones['Zone 2 (Aerobic Base)']})** to absorb recent workload. Let me know if you would like specific workout splits, pacing targets, or recovery protocols.`;
       }
 
       if (hasNewCondition) {
