@@ -652,27 +652,47 @@ Formatting & Voice Rules:
 
       if (hasHeart) {
         staticResponse = `Because your profile includes a **cardiovascular/heart condition**, your training is strictly capped at **low Zone 2 aerobic pacing** (target heart rate: ${karvonenZones['Zone 2 (Aerobic Base)']}). Keep all workouts smooth, conversational, and avoid any anaerobic or sprint intervals. Ensure you are fully cleared by your cardiologist for today's volume.`;
-      } else if (msgLower.includes('fast') || msgLower.includes('speed') || msgLower.includes('interval') || msgLower.includes('sprint') || msgLower.includes('tempo')) {
-        staticResponse = `To build sustainable speed without spiking your ACWR injury risk:
+      } else if (msgLower.includes('vo2') || msgLower.includes('fast') || msgLower.includes('speed') || msgLower.includes('1600') || msgLower.includes('mile') || msgLower.includes('interval') || msgLower.includes('sprint') || msgLower.includes('tempo')) {
+        staticResponse = `### ⚡ Speed & VO2 Max Optimization Protocol
 
-1. **Aerobic Base Foundation (80%)**: Build your capillary density with Zone 2 runs (${karvonenZones['Zone 2 (Aerobic Base)']}). True speed is built on a large aerobic engine.
-2. **Strides (Neuromuscular Calibration)**: Add **4–6x 20-second relaxed accelerations** at the end of easy runs, focusing on knee drive and tall posture.
-3. **Threshold Intervals (20%)**: Once weekly, run **4x 1 km at Lactate Threshold pace** (${karvonenZones['Zone 4 (Lactate Threshold)']}) with 90-second active recovery jogs.
-4. **Volume Control**: Never increase speed and weekly distance simultaneously. Keep your 7-day ACWR below 1.30.`;
-      } else if (msgLower.includes('tip') || msgLower.includes('advice') || msgLower.includes('help') || msgLower.includes('suggest') || msgLower.includes('how to start')) {
-        staticResponse = `Here are the **core physiological principles** for your training:
+To build speed and increase your VO2 max while maintaining ACWR safety (1.18):
+
+1. **VO2 Max Intervals (3–5 min bouts)**: Run **4–5x 3-minute repeats at 90–95% HR max** (${karvonenZones['Zone 5 (VO2 Max / Speed)']}) with equal active recovery jogs.
+2. **Pacing Discipline (1600m / Mile)**: For a 6-minute 1600m target, aim for consistent **90-second 400m splits**. Avoid surging the first lap.
+3. **Lactate Threshold Work**: One weekly 20–30 min continuous tempo run at **85% HR max** (${karvonenZones['Zone 4 (Lactate Threshold)']}) to delay blood lactate accumulation.
+4. **Neuromuscular Strides**: Add **4–6x 100m relaxed accelerations** at the conclusion of easy runs.`;
+      } else if (msgLower.includes('pill') || msgLower.includes('vitamin') || msgLower.includes('vita') || msgLower.includes('magnesium') || msgLower.includes('megnisium') || msgLower.includes('supplement') || msgLower.includes('creatine') || msgLower.includes('caffeine') || msgLower.includes('nutrition') || msgLower.includes('protein') || msgLower.includes('eat') || msgLower.includes('food') || msgLower.includes('fuel') || msgLower.includes('electrolyte')) {
+        staticResponse = `### 💊 Runner's Nutrition & Micronutrient Protocol
+
+- **Magnesium**: 300–400 mg of **Magnesium Glycinate or Citrate** taken 30–60 minutes before bed relaxes skeletal muscle, reduces night cramps, and enhances slow-wave recovery sleep.
+- **Vitamin D3 & K2**: 2000–5000 IU daily supports bone mineral density against repetitive ground impact micro-fractures.
+- **Electrolytes & Sodium**: 300–500 mg sodium per 500 mL water during hot runs exceeding 45 minutes to prevent hyponatremia.
+- **Pre-Run Fueling (60 min)**: 30–60g easily digestible carbs (banana, toast with honey) + 3–6 mg/kg caffeine for glycogen sparing.
+- **Post-Run Recovery (within 45 min)**: 25–30g rapid protein paired with 3:1 carbohydrates to stimulate muscle protein synthesis and replenish glycogen.`;
+      } else if (msgLower.includes('breath') || msgLower.includes('breathing') || msgLower.includes('asthma') || msgLower.includes('lungs') || msgLower.includes('chest')) {
+        staticResponse = `### 🫁 Breathing & Respiratory Regulation
+
+If you are experiencing breathing strain during running:
+
+1. **Rhythmic Breathing Pattern**: Adopt a **3:2 stride-to-breath cadence** (inhale for 3 footsteps, exhale for 2 footsteps). This distributes impact stress across alternating footstrikes.
+2. **Diaphragmatic (Belly) Breathing**: Deepen your breath into the lower abdomen rather than shallow chest breathing to maximize alveolar oxygen exchange.
+3. **Pace Check**: Slow down until your heart rate settles back into **Zone 2 (${karvonenZones['Zone 2 (Aerobic Base)']})** where oxygen demand matches aerobic capacity.
+*(Note: If breathing difficulty is sudden, acute, or accompanied by chest tightness, stop physical exercise immediately.)*`;
+      } else if (msgLower.includes('cadence') || msgLower.includes('spm') || msgLower.includes('stride') || msgLower.includes('form') || msgLower.includes('technique')) {
+        staticResponse = `### 🏃 Cadence & Running Form Optimization
+
+To optimize cadence to the target **170–180 steps/min**:
+
+1. **Shorten Stride, Don't Push Faster**: Focus on quick foot turnover under your center of mass rather than reaching forward (overstriding).
+2. **Metronome Training**: Use a running metronome or 175–180 BPM music playlist for 5-minute intervals during easy runs.
+3. **Arm Swing Drive**: Drive your elbows backward with a compact 90-degree angle; leg cadence naturally synchronizes with arm rhythm.`;
+      } else if (msgLower.includes('tip') || msgLower.includes('advice') || msgLower.includes('help') || msgLower.includes('suggest') || msgLower.includes('how to start') || msgLower.includes('tired')) {
+        staticResponse = `### 💡 Core Endurance Principles for Alex Mercer
 
 - **The 80/20 Rule**: Keep 80% of your weekly volume in Zone 2 (${karvonenZones['Zone 2 (Aerobic Base)']}). Only 20% should be high intensity.
-- **Cadence Optimization**: Aim for **170–180 steps/min** to reduce ground contact time and lower impact forces on knees and shins.
-- **ACWR Equilibrium**: Progress weekly mileage by no more than **8–10%** to stay in the optimal adaptation sweet spot (0.80–1.30).
+- **ACWR Equilibrium**: Progress weekly mileage by no more than **8–10%** to stay in the optimal adaptation sweet spot (0.80–1.30). Current ACWR: **1.18**.
+- **Post-Run Glycogen Window**: Consume carbs and 25g protein within 45 minutes of finishing to accelerate recovery.
 - **Corridor Conquest**: In RunZone, planning circular loop routes captures 40m PostGIS buffered sectors while optimizing return pace.`;
-      } else if (msgLower.includes('supplement') || msgLower.includes('nutrition') || msgLower.includes('eat') || msgLower.includes('food') || msgLower.includes('fuel') || msgLower.includes('electrolyte') || msgLower.includes('protein')) {
-        staticResponse = `Evidence-based nutrition and supplement protocol for runners:
-
-- **Pre-Run (60 min)**: 30–60g easily digestible carbs (banana, toast with honey) + 3–6 mg/kg caffeine for glycogen sparing.
-- **Intra-Run (>60 min)**: 30–60g carbs/hour (energy gels) + 300–500mg sodium/liter to prevent hyponatremia.
-- **Post-Run (within 45 min)**: 20–30g high-quality protein (whey or plant) paired with 3:1 carbs for muscle protein synthesis and glycogen resynthesis.
-- **Daily Recovery**: 3–5g creatine monohydrate for cellular energy recovery and 300mg magnesium glycinate for sleep quality.`;
       } else if (msgLower.includes('zone 2') || msgLower.includes('heart rate') || msgLower.includes('hr') || msgLower.includes('pace') || msgLower.includes('bpm')) {
         staticResponse = `Your calibrated **Karvonen Heart Rate Reserve (HRR)** zones:
 
@@ -697,12 +717,12 @@ Because your ratio is between 0.80 and 1.30, your body is absorbing recent train
 How can I assist your training today? You can ask about:
 - Target heart rate zones & pacing
 - How to structure speed workouts & threshold intervals
-- Pre-run fueling, hydration, and supplements
+- Pre-run fueling, hydration, vitamins, and supplements
 - 40m PostGIS territory conquest strategy`;
       } else {
         staticResponse = `Based on your current 7-day training load of **28.4 km** and an ACWR of **1.18**, your aerobic base is well-calibrated.
 
-For today's session, maintain an aerobic effort in **Zone 2 (${karvonenZones['Zone 2 (Aerobic Base)']})** to absorb recent workload. Let me know if you would like specific workout splits, pacing targets, or recovery protocols.`;
+For today's session, maintain an aerobic effort in **Zone 2 (${karvonenZones['Zone 2 (Aerobic Base)']})** to absorb recent workload. Let me know if you would like specific workout splits, pacing targets, supplement timing, or recovery protocols.`;
       }
 
       if (hasNewCondition) {
