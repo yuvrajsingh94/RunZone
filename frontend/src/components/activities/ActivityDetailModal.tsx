@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Activity } from '../../types';
@@ -24,7 +24,15 @@ import {
   X,
   Award,
   TrendingUp,
+  Moon,
+  Globe,
 } from 'lucide-react';
+import {
+  getMapTilerTileUrl,
+  getMapTilerSatelliteTileUrl,
+  DARK_MAP_ATTRIBUTION,
+  SATELLITE_MAP_ATTRIBUTION,
+} from '../../utils/mapConfig';
 
 interface ActivityDetailModalProps {
   activity: Activity | null;
@@ -48,6 +56,7 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const [mapMode, setMapMode] = useState<'dark' | 'satellite'>('dark');
   if (!isOpen || !activity) return null;
 
   const distKm = activity.distance_meters / 1000;
@@ -220,9 +229,40 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Leaflet Track Preview */}
             <div className="lg:col-span-7 h-64 border border-hairline relative overflow-hidden bg-night">
-              <div className="absolute top-2 left-2 z-[1000] bg-night/90 border border-hairline px-2 py-1 text-[10px] font-display font-semibold text-chalk">
+              <div className="absolute top-2 left-2 z-[1000] bg-night/90 backdrop-blur-sm border border-hairline px-2 py-1 text-[10px] font-display font-semibold text-chalk shadow-xs">
                 40m PostGIS Corridor Path
               </div>
+
+              {/* Basemap Switcher (Dark vs Satellite) */}
+              <div className="absolute top-2 right-2 z-[1000] flex items-center bg-night/90 backdrop-blur-sm border border-hairline p-0.5 shadow-md">
+                <button
+                  type="button"
+                  onClick={() => setMapMode('dark')}
+                  className={`px-2 py-0.5 text-[10px] font-display font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    mapMode === 'dark'
+                      ? 'bg-panel-light text-chalk border border-hairline-strong shadow-xs'
+                      : 'text-chalk-dim hover:text-chalk'
+                  }`}
+                  title="Dark Map"
+                >
+                  <Moon className="w-2.5 h-2.5" />
+                  <span>Dark</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapMode('satellite')}
+                  className={`px-2 py-0.5 text-[10px] font-display font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    mapMode === 'satellite'
+                      ? 'bg-cinder text-chalk border border-cinder shadow-xs'
+                      : 'text-chalk-dim hover:text-chalk'
+                  }`}
+                  title="Satellite Imagery"
+                >
+                  <Globe className="w-2.5 h-2.5" />
+                  <span>Satellite</span>
+                </button>
+              </div>
+
               <MapContainer
                 center={[centerLat, centerLng]}
                 zoom={14}
@@ -230,12 +270,23 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
                 className="w-full h-full"
               >
                 <MapResizer />
-                <TileLayer
-                  attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY}`}
-                  maxZoom={22}
-                  tileSize={256}
-                />
+                {mapMode === 'dark' ? (
+                  <TileLayer
+                    key="dark-layer"
+                    attribution={DARK_MAP_ATTRIBUTION}
+                    url={getMapTilerTileUrl()}
+                    maxZoom={22}
+                    tileSize={256}
+                  />
+                ) : (
+                  <TileLayer
+                    key="satellite-layer"
+                    attribution={SATELLITE_MAP_ATTRIBUTION}
+                    url={getMapTilerSatelliteTileUrl()}
+                    maxZoom={22}
+                    tileSize={256}
+                  />
+                )}
 
                 {/* 40m Buffered Glow Path */}
                 <Polyline

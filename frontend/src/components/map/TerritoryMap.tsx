@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, GeoJSON, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import { TerritoryGeoJSONCollection } from '../../types';
-import { Crosshair, Loader2, Maximize2 } from 'lucide-react';
+import { Crosshair, Loader2, Maximize2, Moon, Globe } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { acquireLiveLocation, isSecureContext } from '../../utils/geoService';
-import { generateDynamicLocalSectors } from '../../utils/mapConfig';
+import {
+  generateDynamicLocalSectors,
+  getMapTilerTileUrl,
+  getMapTilerSatelliteTileUrl,
+  DARK_MAP_ATTRIBUTION,
+  SATELLITE_MAP_ATTRIBUTION,
+} from '../../utils/mapConfig';
 import 'leaflet/dist/leaflet.css';
 
 interface TerritoryMapProps {
@@ -57,6 +63,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
     }
   } catch (e) {}
 
+  const [mapMode, setMapMode] = useState<'dark' | 'satellite'>('dark');
   const [currentCenter, setCurrentCenter] = useState<{ lat: number; lng: number }>({
     lat: initialLat,
     lng: initialLng,
@@ -183,7 +190,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       <div className="absolute top-3 left-3 z-[9000] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
         <div className="flex items-center gap-1.5 text-chalk font-display font-semibold">
           <span className="w-2 h-2 rounded-full bg-cinder inline-block animate-pulse" />
-          <span>Live Tactical Grid · MapTiler Dark</span>
+          <span>Live Tactical Grid · {mapMode === 'satellite' ? 'Satellite Imagery' : 'MapTiler Dark'}</span>
         </div>
         <div className="h-3 w-px bg-hairline-strong" />
         <span className="text-chalk-muted font-display tabular text-[11px]">
@@ -193,6 +200,36 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
 
       {/* Top Right Tactical Controls */}
       <div className="absolute top-3 right-3 z-[9000] flex items-center gap-1.5">
+        {/* Basemap Switcher (Dark vs Satellite) */}
+        <div className="flex items-center bg-night/90 backdrop-blur-sm border border-hairline p-0.5 shadow-md">
+          <button
+            type="button"
+            onClick={() => setMapMode('dark')}
+            className={`px-2 py-1 text-[11px] font-display font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              mapMode === 'dark'
+                ? 'bg-panel-light text-chalk border border-hairline-strong shadow-xs'
+                : 'text-chalk-dim hover:text-chalk'
+            }`}
+            title="Switch to Dark Tactical Basemap"
+          >
+            <Moon className="w-3 h-3" />
+            <span>Dark</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapMode('satellite')}
+            className={`px-2 py-1 text-[11px] font-display font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              mapMode === 'satellite'
+                ? 'bg-cinder text-chalk border border-cinder shadow-xs'
+                : 'text-chalk-dim hover:text-chalk'
+            }`}
+            title="Switch to Photorealistic Satellite Imagery"
+          >
+            <Globe className="w-3 h-3" />
+            <span>Satellite</span>
+          </button>
+        </div>
+
         <button
           onClick={fetchLiveLocation}
           disabled={locating}
@@ -225,13 +262,24 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       >
         <MapViewController targetCoords={currentCenter} zoomLevel={currentZoom} />
 
-        {/* MapTiler Dark Basemap (API key via VITE_MAPTILER_API_KEY env var) */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY}`}
-          maxZoom={22}
-          tileSize={256}
-        />
+        {/* Dynamic Basemap Layer (Dark Streets or Satellite Imagery) */}
+        {mapMode === 'dark' ? (
+          <TileLayer
+            key="dark-layer"
+            attribution={DARK_MAP_ATTRIBUTION}
+            url={getMapTilerTileUrl()}
+            maxZoom={22}
+            tileSize={256}
+          />
+        ) : (
+          <TileLayer
+            key="satellite-layer"
+            attribution={SATELLITE_MAP_ATTRIBUTION}
+            url={getMapTilerSatelliteTileUrl()}
+            maxZoom={22}
+            tileSize={256}
+          />
+        )}
 
         {/* Territory Sectors GeoJSON Layer */}
         <GeoJSON

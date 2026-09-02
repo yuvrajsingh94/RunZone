@@ -20,11 +20,24 @@ export function getMapTilerTileUrl(): string {
   return `https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${key}`;
 }
 
+export function getMapTilerSatelliteTileUrl(): string {
+  const key = getMapTilerKey();
+  if (!key) {
+    return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  }
+  return `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${key}`;
+}
+
 /**
- * Standard attribution string for MapTiler & OpenStreetMap
+ * Standard attribution strings
  */
-export const MAP_ATTRIBUTION =
+export const DARK_MAP_ATTRIBUTION =
   '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+export const SATELLITE_MAP_ATTRIBUTION =
+  '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; Esri';
+
+export const MAP_ATTRIBUTION = DARK_MAP_ATTRIBUTION;
 
 
 /**
