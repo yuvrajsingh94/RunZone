@@ -1,96 +1,31 @@
-﻿import * as maplibregl from 'maplibre-gl';
 import { TerritoryGeoJSONCollection } from '../types';
 
 /**
  * Centralized Map Configuration & Fallback Engine for RunZone
  */
 
-// Default verified key with fallback to environment variable
 export function getMapTilerKey(): string {
   return (
     import.meta.env.VITE_MAPTILER_API_KEY ||
     import.meta.env.VITE_MAPTILER_KEY ||
-    'PN0TxMEOhCAGQMwlU7zv'
+    ''
   );
 }
 
-export function getVectorStyleUrl(): string {
+export function getMapTilerTileUrl(): string {
   const key = getMapTilerKey();
-  return `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${key}`;
+  if (!key) {
+    return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  }
+  return `https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${key}`;
 }
 
 /**
- * High-Reliability Clean OpenStreetMap Raster Style
- * Uses the exact tile endpoint proven working in LiveRunModal.
- * Zero external key requirement, zero rate limits, 100% reliable globally.
+ * Standard attribution string for MapTiler & OpenStreetMap
  */
-export const FALLBACK_DARK_STYLE: any = {
-  version: 8,
-  name: 'RunZone OpenStreetMap Basemap',
-  sources: {
-    'osm-tiles': {
-      type: 'raster',
-      tiles: [
-        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      ],
-      tileSize: 256,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    },
-  },
-  layers: [
-    {
-      id: 'osm-tiles-layer',
-      type: 'raster',
-      source: 'osm-tiles',
-      minzoom: 0,
-      maxzoom: 19,
-    },
-  ],
-};
+export const MAP_ATTRIBUTION =
+  '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
-/**
- * Attaches a recovery listener that catches 401/403/Forbidden/Network style errors
- * and switches to the fallback raster style seamlessly.
- */
-export function setupMapErrorRecovery(
-  map: maplibregl.Map,
-  onFallback?: (reason: string) => void
-): () => void {
-  let hasFallenBack = false;
-
-  const errorHandler = (e: any) => {
-    if (hasFallenBack) return;
-
-    const errorStr = (e?.error?.message || e?.message || JSON.stringify(e || '')).toLowerCase();
-    const isAuthOrNetworkError =
-      errorStr.includes('401') ||
-      errorStr.includes('403') ||
-      errorStr.includes('forbidden') ||
-      errorStr.includes('unauthorized') ||
-      errorStr.includes('invalid key') ||
-      errorStr.includes('failed to fetch') ||
-      errorStr.includes('networkerror');
-
-    if (isAuthOrNetworkError) {
-      hasFallenBack = true;
-      console.warn('[RunZone Map Engine] MapTiler style unavailable. Switching to clean OpenStreetMap basemap.', e);
-      try {
-        map.setStyle(FALLBACK_DARK_STYLE);
-        if (onFallback) onFallback('Using clean OpenStreetMap basemap');
-      } catch (err) {
-        console.error('[RunZone Map Engine] Failed to set fallback style:', err);
-      }
-    }
-  };
-
-  map.on('error', errorHandler);
-
-  return () => {
-    map.off('error', errorHandler);
-  };
-}
 
 /**
  * Generate synthetic territory polygons centered on physical or chosen coordinates

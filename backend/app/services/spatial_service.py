@@ -1,3 +1,4 @@
+import math
 import json
 from typing import List, Dict, Any, Tuple, Optional
 from shapely.geometry import LineString, Polygon, mapping, shape
@@ -31,7 +32,7 @@ class SpatialService:
         # Approximate metric buffer in degrees at mean latitude
         mean_lat = sum(c[1] for c in coordinates) / len(coordinates)
         lat_scale = 111320.0  # 1 degree latitude ~= 111.32 km
-        lon_scale = 111320.0 * max(0.1, abs(math_cos := math_cos_calc(mean_lat)))
+        lon_scale = 111320.0 * max(0.1, abs(math.cos(math.radians(mean_lat))))
 
         deg_buffer_y = buffer_meters / lat_scale
         deg_buffer_x = buffer_meters / lon_scale
@@ -149,8 +150,3 @@ class SpatialService:
             "geojson": geojson_poly,
             "total_user_territory_km2": user.total_territory_km2 if user else area_km2,
         }
-
-
-def math_cos_calc(lat_deg: float) -> float:
-    import math
-    return math.cos(math.radians(lat_deg))

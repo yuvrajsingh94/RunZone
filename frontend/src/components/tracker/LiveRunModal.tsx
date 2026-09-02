@@ -443,11 +443,12 @@ export const LiveRunModal: React.FC<LiveRunModalProps> = ({ isOpen, onClose, onR
               >
                 <LiveMapController coords={tracker.coords} />
 
-                {/* OpenStreetMap Dark Tiles */}
+                {/* MapTiler Dark Streets Basemap */}
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  maxZoom={19}
+                  attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY || ''}`}
+                  maxZoom={22}
+                  tileSize={256}
                 />
 
                 {/* Live Breadcrumbs Polyline */}
