@@ -320,6 +320,9 @@ class LLMCoachService:
             return validated_content, model_used
         except Exception as err:
             logger.error(f"Groq chat failed across all models: {err}. Using local heuristic response.")
+            last_err = str(err)
+        else:
+            last_err = None
 
         # Heuristic fallback (also protected by Layer 1 is_off_topic check and health rules)
         msg_lower = user_message.lower()
@@ -389,7 +392,7 @@ class LLMCoachService:
                 + resp
             )
 
-        return CoachGuardrails.validate_coach_output(resp, acwr_data.current_acwr, active_conditions), "Heuristic Fallback"
+        return CoachGuardrails.validate_coach_output(resp, acwr_data.current_acwr, active_conditions), f"Heuristic Fallback ({last_err})"
 
     @classmethod
     async def generate_training_plan(
