@@ -211,18 +211,25 @@ class CoachGuardrails:
     def is_off_topic(cls, user_message: str) -> bool:
         """
         Layer 1 deterministic pre-check:
-        Returns True if message matches obvious off-topic patterns or lacks in-domain keywords.
+        Returns True only if message matches obvious off-topic patterns.
+        Short conversational messages (greetings, short questions) are passed to the LLM.
         """
         lower_msg = user_message.lower().strip()
         if not lower_msg:
             return True
 
-        # Match obvious off-topic patterns (code, essays, stocks, crypto, taxes, jailbreaks)
+        # Match obvious off-topic patterns (code, essays, stocks, crypto, jailbreaks)
         for pattern in cls.OFF_TOPIC_PATTERNS:
             if re.search(pattern, lower_msg):
                 return True
 
-        # Check if message contains at least one in-domain keyword
+        # Short messages (≤6 words) with no explicit off-topic content pass through to the LLM
+        # This allows greetings like "hello", "goodmorning", "thanks", "how are you", etc.
+        word_count = len(lower_msg.split())
+        if word_count <= 6:
+            return False
+
+        # For longer messages, check if at least one in-domain keyword exists
         has_in_domain_keyword = any(re.search(p, lower_msg) for p in cls.IN_DOMAIN_PATTERNS)
         if not has_in_domain_keyword:
             return True
