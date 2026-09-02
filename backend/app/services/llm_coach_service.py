@@ -330,6 +330,33 @@ class LLMCoachService:
                 f"(target heart rate: {karvonen_zones['Zone 2 (Aerobic Base)']}). Keep all workouts smooth, conversational, and avoid any anaerobic or sprint intervals. "
                 f"Ensure you are fully cleared by your cardiologist for today's volume."
             )
+        elif "vo2" in msg_lower or "fast" in msg_lower or "speed" in msg_lower or "1600" in msg_lower or "sprint" in msg_lower or "interval" in msg_lower or "tempo" in msg_lower:
+            resp = (
+                f"### ⚡ Speed & VO2 Max Optimization Protocol\n\n"
+                f"To build speed and increase your VO2 max while maintaining ACWR safety ({acwr_data.current_acwr:.2f}):\n\n"
+                f"1. **VO2 Max Intervals (3–5 min bouts)**: Run **4–5x 3-minute repeats at 90–95% HR max** ({karvonen_zones.get('Zone 5 (VO2 Max / Speed)')}) with equal active recovery jogs.\n"
+                f"2. **Pacing Discipline (1600m / Mile)**: For a 6-minute 1600m target, aim for consistent **90-second 400m splits**. Avoid surging the first lap.\n"
+                f"3. **Lactate Threshold Work**: One weekly 20–30 min continuous tempo run at **85% HR max** ({karvonen_zones.get('Zone 4 (Lactate Threshold)')}) to delay blood lactate accumulation.\n"
+                f"4. **Neuromuscular Strides**: Add **4–6x 100m relaxed accelerations** at the conclusion of easy runs."
+            )
+        elif "pill" in msg_lower or "vitamin" in msg_lower or "magnesium" in msg_lower or "megnisium" in msg_lower or "supplement" in msg_lower or "creatine" in msg_lower or "caffeine" in msg_lower or "nutrition" in msg_lower or "protein" in msg_lower or "eat" in msg_lower:
+            resp = (
+                f"### 💊 Runner's Supplement & Micronutrient Protocol\n\n"
+                f"- **Magnesium**: 300–400 mg of **Magnesium Glycinate or Citrate** taken 30–60 minutes before bed relaxes skeletal muscle, reduces night cramps, and enhances slow-wave recovery sleep.\n"
+                f"- **Vitamin D3 & K2**: 2000–5000 IU daily supports bone mineral density against repetitive ground impact micro-fractures.\n"
+                f"- **Electrolytes & Sodium**: 300–500 mg sodium per 500 mL water during hot runs exceeding 45 minutes.\n"
+                f"- **Pre-Run Caffeine**: 3–6 mg/kg body weight taken 45–60 min prior for central nervous system arousal and glycogen sparing.\n"
+                f"- **Post-Run Recovery**: 25–30g rapid protein paired with carbohydrates within 45 minutes to stimulate muscle protein synthesis."
+            )
+        elif "breath" in msg_lower or "breathing" in msg_lower or "asthma" in msg_lower:
+            resp = (
+                f"### 🫁 Breathing & Respiratory Regulation\n\n"
+                f"If you are experiencing breathing strain during running:\n\n"
+                f"1. **Rhythmic Breathing Pattern**: Adopt a **3:2 stride-to-breath cadence** (inhale for 3 footsteps, exhale for 2 footsteps). This distributes impact stress across alternating footstrikes.\n"
+                f"2. **Diaphragmatic (Belly) Breathing**: Deepen your breath into the lower abdomen rather than shallow chest breathing to maximize alveolar oxygen exchange.\n"
+                f"3. **Pace Check**: Slow down until your heart rate settles back into **Zone 2 ({karvonen_zones.get('Zone 2 (Aerobic Base)')})** where oxygen demand matches aerobic capacity.\n"
+                f"*(Note: If breathing difficulty is sudden, acute, or accompanied by chest tightness, stop physical exercise immediately.)*"
+            )
         elif "acwr" in msg_lower or "injury" in msg_lower or "sore" in msg_lower or "fatigue" in msg_lower:
             resp = (
                 f"Your current Acute:Chronic Workload Ratio is **{acwr_data.current_acwr:.2f}** ({acwr_data.current_risk_category}). "
@@ -347,15 +374,10 @@ class LLMCoachService:
                 f"For endurance race preparation, keep 80% of your weekly volume in Zone 2 aerobic base, reserving 20% for threshold intervals. "
                 f"With your current 7-day distance of **{acwr_data.total_distance_7d_km:.1f} km**, progress weekly volume by no more than 10% to prevent an acute workload spike."
             )
-        elif "supplement" in msg_lower or "creatine" in msg_lower or "caffeine" in msg_lower or "beta alanine" in msg_lower or "nutrition" in msg_lower or "protein" in msg_lower:
-            resp = (
-                f"For endurance runners, key evidence-based supplements include caffeine (3–6 mg/kg 60 min pre-run for glycogen sparing), "
-                f"beta-alanine (for buffering acidosis during lactate threshold surges), and 20–30g of whey/plant protein post-run within 45 minutes for muscle protein synthesis."
-            )
         else:
             resp = (
                 f"Based on your current 7-day training load of **{acwr_data.total_distance_7d_km:.1f} km** and an ACWR of **{acwr_data.current_acwr:.2f}**, "
-                f"I recommend keeping today's effort strictly aerobic to absorb recent volume. Let me know if you need specific heart-rate zone thresholds, recovery protocols, or route advice."
+                f"your aerobic foundation is well balanced. Ask me about specific interval splits, pacing targets, supplement timing, or route strategy."
             )
 
         if has_new_condition:
