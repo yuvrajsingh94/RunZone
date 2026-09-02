@@ -337,8 +337,7 @@ ${gpxPoints}
                 attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY}`}
                 maxZoom={22}
-                tileSize={512}
-                zoomOffset={-1}
+                tileSize={256}
               />
 
               {/* Waypoints Polyline Glow & Core */}

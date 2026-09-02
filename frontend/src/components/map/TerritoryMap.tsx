@@ -180,10 +180,10 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       style={{ height }}
     >
       {/* Top Left Status Overlay */}
-      <div className="absolute top-3 left-3 z-[400] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
+      <div className="absolute top-3 left-3 z-[9000] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
         <div className="flex items-center gap-1.5 text-chalk font-display font-semibold">
           <span className="w-2 h-2 rounded-full bg-cinder inline-block animate-pulse" />
-          <span>Live Tactical Grid · OpenStreetMap</span>
+          <span>Live Tactical Grid · MapTiler Dark</span>
         </div>
         <div className="h-3 w-px bg-hairline-strong" />
         <span className="text-chalk-muted font-display tabular text-[11px]">
@@ -192,7 +192,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       </div>
 
       {/* Top Right Tactical Controls */}
-      <div className="absolute top-3 right-3 z-[400] flex items-center gap-1.5">
+      <div className="absolute top-3 right-3 z-[9000] flex items-center gap-1.5">
         <button
           onClick={fetchLiveLocation}
           disabled={locating}
@@ -225,13 +225,12 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       >
         <MapViewController targetCoords={currentCenter} zoomLevel={currentZoom} />
 
-        {/* MapTiler Dark Streets Basemap (API key via VITE_MAPTILER_API_KEY env var) */}
+        {/* MapTiler Dark Basemap (API key via VITE_MAPTILER_API_KEY env var) */}
         <TileLayer
           attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY}`}
           maxZoom={22}
-          tileSize={512}
-          zoomOffset={-1}
+          tileSize={256}
         />
 
         {/* Territory Sectors GeoJSON Layer */}
