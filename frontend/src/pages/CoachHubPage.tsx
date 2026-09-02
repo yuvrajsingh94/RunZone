@@ -100,7 +100,7 @@ export const CoachHubPage: React.FC = () => {
             </h1>
             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-panel border border-hairline text-[10px]">
               <Cpu className="w-3 h-3 text-cinder" />
-              <span className="text-chalk font-display font-medium">Llama 3.3 70B · Groq</span>
+              <span className="text-chalk font-display font-medium">GPT OSS 120B · Groq</span>
             </div>
           </div>
           <p className="text-xs text-chalk-muted mt-0.5">
@@ -253,7 +253,7 @@ export const CoachHubPage: React.FC = () => {
             {loading && (
               <div className="flex items-center gap-2 text-xs text-chalk-dim py-1">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-cinder" />
-                <span>ZoneCoach is querying Groq Llama 3.3 70B…</span>
+                <span>ZoneCoach is querying Groq GPT OSS 120B…</span>
               </div>
             )}
             <div ref={messagesEndRef} />

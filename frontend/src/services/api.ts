@@ -18,15 +18,15 @@ import {
 } from '../types';
 import { CoachGuardrails } from './coachGuardrails';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://runzone-backend-production.up.railway.app/api/v1';
 const GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || '';
 
-// Groq Model Chain (Verified models with fast inference)
+// Groq Model Chain (Verified active models on Groq)
 const GROQ_MODELS = [
-  'llama-3.3-70b-versatile',
-  'llama-3.1-70b-versatile',
-  'llama-3.1-8b-instant',
-  'mixtral-8x7b-32768',
+  'openai/gpt-oss-120b',
+  'qwen/qwen3.8-27b',
+  'openai/gpt-oss-20b',
+  'groq/compound',
 ];
 
 // Mock San Francisco GeoJSON territory polygons
