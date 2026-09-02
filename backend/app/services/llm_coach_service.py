@@ -52,11 +52,12 @@ class LLMCoachService:
         Executes chat completion with automated fallback chain across Groq models.
         Returns: (response_text, model_used)
         """
-        if not settings.GROQ_API_KEY:
+        api_key = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "") or os.environ.get("VITE_GROQ_API_KEY", "")
+        if not api_key:
             raise ValueError("GROQ_API_KEY is not configured")
 
         headers = {
-            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
 
