@@ -52,7 +52,8 @@ class LLMCoachService:
         Executes chat completion with automated fallback chain across Groq models.
         Returns: (response_text, model_used)
         """
-        api_key = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "") or os.environ.get("VITE_GROQ_API_KEY", "")
+        raw_key = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "") or os.environ.get("VITE_GROQ_API_KEY", "")
+        api_key = raw_key.strip().strip("'\"")
         if not api_key:
             raise ValueError("GROQ_API_KEY is not configured")
 
