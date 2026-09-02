@@ -231,10 +231,11 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
               >
                 <MapResizer />
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  maxZoom={19}
-                  subdomains="abcd"
+                  attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY}`}
+                  maxZoom={22}
+                  tileSize={512}
+                  zoomOffset={-1}
                 />
 
                 {/* 40m Buffered Glow Path */}
