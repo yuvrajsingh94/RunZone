@@ -42,11 +42,16 @@ class User(Base):
     total_territory_km2 = Column(Float, default=0.0)
     faction_color = Column(String(20), default="#3B82F6")  # Blue, Red, Neon Green, Purple
 
-    # Strava Integration
     strava_athlete_id = Column(String(100), unique=True, nullable=True, index=True)
     strava_access_token = Column(String(255), nullable=True)
     strava_refresh_token = Column(String(255), nullable=True)
     strava_token_expires_at = Column(Integer, nullable=True)
+
+    @property
+    def is_strava_connected(self) -> bool:
+        """Indicates whether user has actively authorized Strava integration."""
+        return bool(self.strava_athlete_id and self.strava_access_token)
+
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

@@ -36,13 +36,28 @@ async def territory_websocket_endpoint(websocket: WebSocket):
 
 @router.get("/map", response_model=APIResponse[GeoJSONFeatureCollection])
 async def get_territory_map(
+    bbox: Optional[str] = Query(None, description="Viewport bounding box formatted as minLon,minLat,maxLon,maxLat"),
+    limit: int = Query(250, ge=1, le=1000, description="Maximum sectors to return"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns GeoJSON FeatureCollection of all active territory polygons for Mapbox / Leaflet map rendering.
+    Returns GeoJSON FeatureCollection of active territory polygons with optional PostGIS bounding box filtering.
     """
+    from sqlalchemy import func
     query = select(TerritoryZone).options(selectinload(TerritoryZone.owner)).order_by(TerritoryZone.captured_at.desc())
+
+    if bbox:
+        try:
+            coords = [float(x.strip()) for x in bbox.split(",")]
+            if len(coords) == 4:
+                min_lon, min_lat, max_lon, max_lat = coords
+                envelope = func.ST_SetSRID(func.ST_MakeEnvelope(min_lon, min_lat, max_lon, max_lat), 4326)
+                query = query.where(func.ST_Intersects(TerritoryZone.geom, envelope))
+        except Exception:
+            pass
+
+    query = query.limit(limit)
     result = await db.execute(query)
     zones = result.scalars().all()
 

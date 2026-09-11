@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, and_
+from sqlalchemy import select, func, desc, and_, update
 
 from app.core.database import get_db
 from app.core.security import get_current_user, verify_resource_ownership
@@ -132,7 +132,12 @@ async def create_manual_activity(
         )
         activity.territory_captured_km2 = territory_res["area_km2"]
 
-    current_user.total_distance_km = round((current_user.total_distance_km or 0.0) + (payload.distance_meters / 1000.0), 2)
+    dist_km = round(payload.distance_meters / 1000.0, 2)
+    await db.execute(
+        update(User)
+        .where(User.id == current_user.id)
+        .values(total_distance_km=func.coalesce(User.total_distance_km, 0.0) + dist_km)
+    )
     await db.commit()
     await db.refresh(activity)
 
@@ -215,9 +220,29 @@ async def upload_gpx(
     """
     Parse uploaded GPX track, calculate TRIMP, and buffer PostGIS corridor.
     """
+    if not (file.filename and file.filename.lower().endswith(".gpx")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file format: Only .gpx files are supported.",
+        )
+
+    # Enterprise guardrail: 10MB file size ceiling to prevent OOM
+    MAX_GPX_SIZE = 10 * 1024 * 1024
+    content = await file.read(MAX_GPX_SIZE + 1)
+    if len(content) > MAX_GPX_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="GPX file exceeds maximum allowed size limit of 10MB.",
+        )
+
     import gpxpy
-    content = await file.read()
-    gpx = gpxpy.parse(content.decode("utf-8", errors="ignore"))
+    try:
+        gpx = gpxpy.parse(content.decode("utf-8", errors="ignore"))
+    except Exception as parse_err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to parse GPX XML structure. File may be corrupted.",
+        )
 
     coords: List[List[float]] = []
     total_elevation = 0.0
@@ -273,7 +298,12 @@ async def upload_gpx(
         zone_name=f"{title} Sector",
     )
     activity.territory_captured_km2 = territory_res["area_km2"]
-    current_user.total_distance_km = round((current_user.total_distance_km or 0.0) + (dist_m / 1000.0), 2)
+    dist_km = round(dist_m / 1000.0, 2)
+    await db.execute(
+        update(User)
+        .where(User.id == current_user.id)
+        .values(total_distance_km=func.coalesce(User.total_distance_km, 0.0) + dist_km)
+    )
 
     await db.commit()
     await db.refresh(activity)

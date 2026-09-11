@@ -73,74 +73,109 @@ class SpatialService:
         """
         PostGIS Territory Capture Engine:
         1. Generates buffered territory polygon around GPS track.
-        2. Detects overlapping rival zones with ST_Intersects / spatial queries.
-        3. Calculates newly claimed area and handles capture logs.
-        4. Updates user's total territory stat.
+        2. Populates native PostGIS geometry (SRID 4326) with GiST spatial indexing.
+        3. Detects overlapping rival zones with database-level ST_Intersects queries.
+        4. Calculates newly claimed area and logs contested captures.
+        5. Atomically updates athlete XP, level, and total territory stats.
         """
         geojson_poly = cls.buffer_linestring_meters(coordinates, buffer_meters)
         area_km2 = cls.calculate_polygon_area_km2(geojson_poly)
-        
         name = zone_name or f"Sector-{user_id}-{(activity_id or 100) % 999}"
+        poly_json_str = json.dumps(geojson_poly)
 
-        # Create new territory zone
+        # Enterprise PostGIS population: save both indexed geom and JSON payload
         new_zone = TerritoryZone(
             owner_id=user_id,
             activity_id=activity_id,
             zone_name=name,
             area_km2=area_km2,
             defense_points=100,
+            geom=func.ST_SetSRID(func.ST_GeomFromGeoJSON(poly_json_str), 4326),
             geojson_data=geojson_poly,
         )
         db.add(new_zone)
         await db.flush()
 
-        # Check for overlapping competitor zones to capture / contest
-        overlap_result = await db.execute(
-            select(TerritoryZone).where(
-                TerritoryZone.owner_id != user_id
-            )
-        )
-        rival_zones = overlap_result.scalars().all()
-        
+        # Database-level PostGIS spatial query using GiST index
+        poly_shape = shape(geojson_poly)
         captured_stolen_km2 = 0.0
-        new_poly_shape = shape(geojson_poly)
+
+        try:
+            # Query candidate overlapping zones directly in PostGIS
+            spatial_query = (
+                select(TerritoryZone)
+                .where(
+                    TerritoryZone.owner_id != user_id,
+                    TerritoryZone.defense_points > 0,
+                    TerritoryZone.id != new_zone.id,
+                    func.ST_Intersects(
+                        TerritoryZone.geom,
+                        func.ST_SetSRID(func.ST_GeomFromGeoJSON(poly_json_str), 4326),
+                    ),
+                )
+                .limit(50)
+            )
+            overlap_res = await db.execute(spatial_query)
+            rival_zones = overlap_res.scalars().all()
+        except Exception:
+            # Graceful fallback if PostGIS spatial index is not yet enabled in local SQLite/mock
+            fallback_query = (
+                select(TerritoryZone)
+                .where(
+                    TerritoryZone.owner_id != user_id,
+                    TerritoryZone.defense_points > 0,
+                    TerritoryZone.id != new_zone.id,
+                )
+                .limit(50)
+            )
+            overlap_res = await db.execute(fallback_query)
+            rival_zones = overlap_res.scalars().all()
 
         for r_zone in rival_zones:
-            if r_zone.geojson_data:
-                try:
-                    r_shape = shape(r_zone.geojson_data)
-                    if new_poly_shape.intersects(r_shape):
-                        intersection = new_poly_shape.intersection(r_shape)
-                        if not intersection.is_empty:
-                            stolen = cls.calculate_polygon_area_km2(mapping(intersection))
-                            captured_stolen_km2 += stolen
-                            
-                            # Log capture
-                            log = TerritoryCaptureLog(
-                                zone_id=new_zone.id,
-                                previous_owner_id=r_zone.owner_id,
-                                new_owner_id=user_id,
-                                activity_id=activity_id,
-                                stolen_area_km2=stolen
-                            )
-                            db.add(log)
-                            
-                            # Reduce defense points of rival
-                            r_zone.defense_points = max(0, r_zone.defense_points - 35)
-                except Exception:
-                    continue
+            if not r_zone.geojson_data:
+                continue
+            try:
+                r_shape = shape(r_zone.geojson_data)
+                if poly_shape.intersects(r_shape):
+                    intersection = poly_shape.intersection(r_shape)
+                    if not intersection.is_empty:
+                        stolen = cls.calculate_polygon_area_km2(mapping(intersection))
+                        captured_stolen_km2 += stolen
 
-        # Update User total stats
-        user_result = await db.execute(select(User).where(User.id == user_id))
-        user = user_result.scalar_one_or_none()
-        if user:
-            user.total_territory_km2 = round((user.total_territory_km2 or 0.0) + area_km2, 3)
-            user.xp = (user.xp or 0) + int(area_km2 * 1000) + 150
-            # Level up every 1000 XP
-            user.level = max(1, (user.xp // 1000) + 1)
+                        log = TerritoryCaptureLog(
+                            zone_id=new_zone.id,
+                            previous_owner_id=r_zone.owner_id,
+                            new_owner_id=user_id,
+                            activity_id=activity_id,
+                            stolen_area_km2=stolen,
+                        )
+                        db.add(log)
+
+                        # Contest rival defense points
+                        r_zone.defense_points = max(0, r_zone.defense_points - 35)
+                        if r_zone.defense_points <= 0:
+                            r_zone.owner_id = None
+            except Exception:
+                continue
+
+        # Atomically increment user gamification stats
+        xp_gain = int(area_km2 * 1000) + 150
+        await db.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(
+                total_territory_km2=func.coalesce(User.total_territory_km2, 0.0) + area_km2,
+                xp=func.coalesce(User.xp, 0) + xp_gain,
+                level=func.greatest(1, ((func.coalesce(User.xp, 0) + xp_gain) // 1000) + 1),
+            )
+        )
 
         await db.commit()
         await db.refresh(new_zone)
+
+        # Retrieve updated user stats
+        user_res = await db.execute(select(User).where(User.id == user_id))
+        user = user_res.scalar_one_or_none()
 
         return {
             "zone_id": new_zone.id,

@@ -39,6 +39,39 @@ def hash_token(token_str: str) -> str:
     return hashlib.sha256(token_str.encode("utf-8")).hexdigest()
 
 
+def _get_encryption_cipher():
+    """Derive deterministic Fernet cipher key from JWT_SECRET_KEY."""
+    import base64
+    from cryptography.fernet import Fernet
+    key_32 = hashlib.sha256(settings.JWT_SECRET_KEY.encode("utf-8")).digest()
+    fernet_key = base64.urlsafe_b64encode(key_32)
+    return Fernet(fernet_key)
+
+
+def encrypt_secret(plain_text: Optional[str]) -> Optional[str]:
+    """Encrypt sensitive credentials (OAuth tokens, API keys) at rest using AES-CBC/Fernet."""
+    if not plain_text:
+        return None
+    try:
+        cipher = _get_encryption_cipher()
+        return cipher.encrypt(plain_text.encode("utf-8")).decode("utf-8")
+    except Exception:
+        return plain_text
+
+
+def decrypt_secret(encrypted_text: Optional[str]) -> Optional[str]:
+    """Decrypt sensitive credentials at rest; falls back to raw string if not encrypted."""
+    if not encrypted_text:
+        return None
+    try:
+        cipher = _get_encryption_cipher()
+        return cipher.decrypt(encrypted_text.encode("utf-8")).decode("utf-8")
+    except Exception:
+        # Graceful fallback for existing unencrypted legacy records
+        return encrypted_text
+
+
+
 def create_access_token(user_id: int, role: str = "runner") -> Tuple[str, int]:
     """
     Generate short-lived JWT access token (15 mins).

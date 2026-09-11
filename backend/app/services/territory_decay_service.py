@@ -64,7 +64,16 @@ class TerritoryDecayService:
         Emits real-time WebSocket events for all modified or neutral sectors.
         """
         current_time = now or datetime.now(timezone.utc)
-        query = select(TerritoryZone).options(selectinload(TerritoryZone.owner))
+        grace_threshold = current_time - timedelta(days=cls.DECAY_GRACE_PERIOD_DAYS)
+        # Database query optimization: filter only candidate decaying zones
+        query = (
+            select(TerritoryZone)
+            .options(selectinload(TerritoryZone.owner))
+            .where(
+                TerritoryZone.defense_points > 0,
+                TerritoryZone.updated_at < grace_threshold,
+            )
+        )
         result = await db.execute(query)
         zones = result.scalars().all()
 

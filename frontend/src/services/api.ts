@@ -19,17 +19,8 @@ import {
 import { CoachGuardrails } from './coachGuardrails';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://runzone-backend-production.up.railway.app/api/v1';
-const GROQ_API_KEY =
-  (import.meta as any).env?.VITE_GROQ_API_KEY ||
-  String.fromCharCode(103, 115, 107, 95, 65, 50, 121, 53, 82, 78, 113, 119, 112, 118, 54, 103, 99, 71, 108, 48, 50, 111, 115, 86, 87, 71, 100, 121, 98, 51, 70, 89, 68, 103, 108, 70, 71, 55, 53, 109, 83, 74, 84, 86, 51, 48, 103, 90, 51, 70, 119, 80, 83, 68, 99, 55);
+// Enterprise standard: API keys are strictly maintained on backend servers.
 
-// Groq Model Chain (Verified active models on Groq)
-const GROQ_MODELS = [
-  'openai/gpt-oss-120b',
-  'qwen/qwen3.8-27b',
-  'openai/gpt-oss-20b',
-  'groq/compound',
-];
 
 // Mock San Francisco GeoJSON territory polygons
 const MOCK_TERRITORIES: TerritoryGeoJSONCollection = {
@@ -351,7 +342,7 @@ class ApiService {
   }
 
   /**
-   * Direct Groq LLM Inference Caller with Multi-Model Fallback Chain
+   * Enterprise LLM Inference Caller: Routes requests strictly through backend gateway
    */
   public async callGroqDirect(
     messages: Array<{ role: string; content: string }>,
@@ -359,45 +350,24 @@ class ApiService {
     max_tokens: number = 800,
     jsonMode: boolean = false
   ): Promise<{ response: string; model_used: string }> {
-    if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY is not configured');
+    const lastMessage = messages[messages.length - 1]?.content || '';
+    const history = messages.slice(0, -1);
+    try {
+      const res: any = await this.request('/coach/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          message: lastMessage,
+          conversation_history: history,
+        }),
+      });
+      return {
+        response: res.response || res.data?.response || '',
+        model_used: res.model_used || 'ZoneCoach Backend Engine',
+      };
+    } catch (err) {
+      console.warn('Backend LLM coach endpoint unavailable:', err);
+      throw err;
     }
-
-    for (const modelId of GROQ_MODELS) {
-      try {
-        const body: any = {
-          model: modelId,
-          messages,
-          temperature,
-          max_tokens,
-        };
-        if (jsonMode) {
-          body.response_format = { type: 'json_object' };
-        }
-
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${GROQ_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const content = data?.choices?.[0]?.message?.content || '';
-          return {
-            response: content,
-            model_used: modelId,
-          };
-        }
-      } catch (e) {
-        console.warn(`Groq model ${modelId} error:`, e);
-      }
-    }
-
-    throw new Error('All Groq models failed');
   }
 
   /**
@@ -503,34 +473,6 @@ class ApiService {
     }
 
     if (endpoint.includes('/coach/daily-briefing')) {
-      if (GROQ_API_KEY) {
-        try {
-          const prompt = [
-            {
-              role: 'system',
-              content: 'You are ZoneCoach, an elite sports physiologist and running coach. Generate a structured daily briefing for athlete Alex Mercer (ACWR 1.18, 7-day distance 28.4km, optimal sweet spot). Output strictly valid JSON.',
-            },
-            {
-              role: 'user',
-              content: 'Provide JSON keys: "title", "greeting", "injury_risk_assessment", "acwr_status_summary", "recommended_workout", "suggested_target_zone", "motivational_quote".',
-            },
-          ];
-          const groqRes = await this.callGroqDirect(prompt, 0.4, 600, true);
-          const parsed = JSON.parse(groqRes.response);
-          const briefing: DailyCoachBriefing = {
-            title: parsed.title || 'Aerobic Sweet Spot Maintenance',
-            greeting: parsed.greeting || 'Good morning Alex.',
-            injury_risk_assessment: parsed.injury_risk_assessment || 'Your ACWR is 1.18 in the optimal adaptation sweet spot.',
-            acwr_status_summary: `${parsed.acwr_status_summary || 'Optimal adaptation'} (${groqRes.model_used})`,
-            recommended_workout: parsed.recommended_workout || '6.5 km Zone 2 aerobic maintenance run.',
-            suggested_target_zone: parsed.suggested_target_zone || 'Zone 2–3 (Aerobic Tempo)',
-            motivational_quote: parsed.motivational_quote || 'Consistency in the sweet spot preserves longevity.',
-          };
-          return briefing as unknown as T;
-        } catch (e) {
-          // Fallback to static briefing below
-        }
-      }
       const staticBriefing: DailyCoachBriefing = {
         title: 'Aerobic Maintenance & Corridor Expansion',
         greeting: 'Good morning Alex.',
@@ -590,61 +532,6 @@ class ApiService {
 
       const karvonenZones = CoachGuardrails.calculateKarvonenZones(52, 194);
       const healthRules = CoachGuardrails.formatHealthSafetyRules(activeConditions);
-
-      if (GROQ_API_KEY) {
-        try {
-          const groqMessages = [
-            {
-              role: 'system',
-              content: `You are ZoneCoach, an elite endurance running coach and exercise physiologist for the RunZone platform.
-Athlete Name: Alex Mercer
-Live Telemetry:
-- ACWR Ratio: 1.18 (Optimal adaptation sweet spot)
-- Acute 7-Day Fatigue Load: 342.5
-- Chronic 28-Day Baseline Capacity: 290.0
-- 7-Day Mileage: 28.4 km
-- Estimated Soft-Tissue Injury Risk: 11%
-- Karvonen Heart Rate Zones (Resting: 52 bpm, Max: 194 bpm):
-  * Zone 1: ${karvonenZones['Zone 1 (Active Recovery)']}
-  * Zone 2: ${karvonenZones['Zone 2 (Aerobic Base)']}
-  * Zone 3: ${karvonenZones['Zone 3 (Aerobic Tempo)']}
-  * Zone 4: ${karvonenZones['Zone 4 (Lactate Threshold)']}
-  * Zone 5: ${karvonenZones['Zone 5 (VO2 Max / Speed)']}
-
-${healthRules}
-
-Formatting & Voice Rules:
-1. Always format responses using clean GitHub Markdown: bold key numbers/metrics (**1.18**, **Zone 2**, **5:30 min/km**), use bulleted lists for protocols, and use Markdown tables for workout splits/comparisons when explaining pacing or schedules.
-2. Tone: Calm, precise, authoritative, and scientifically grounded (Karvonen HRR, TRIMP, Dr. Tim Gabbett ACWR model).
-3. Do NOT use emojis, exclamation marks, or generic cheerleading. Keep sentences concise, plain, and actionable in sentence case.
-4. When discussing territory conquest, explain how 40m GPS buffering in PostGIS rewards smart loop routing without overloading acute fatigue.
-5. Workload Safety Rule: If the athlete's ACWR > 1.30, do NOT recommend intense interval workouts. If ACWR > 1.50, strictly enforce active recovery.`,
-            },
-            ...history.map((h: any) => ({ role: h.role, content: h.content })),
-            { role: 'user', content: userMsg },
-          ];
-
-          const groqRes = await this.callGroqDirect(groqMessages, 0.5, 750, false);
-          let validatedResponse = CoachGuardrails.validateOutput(groqRes.response, 1.18, activeConditions);
-          
-          if (hasNewCondition) {
-            const conditionsStr = newlyDetected.join(', ');
-            validatedResponse =
-              `> 🩺 **Health Profile Updated**: I have noted your **${conditionsStr}** in your athlete profile. ` +
-              'All future workouts, ACWR limits, and pacing recommendations are calibrated with strict cardiovascular and health safety parameters.\n\n' +
-              validatedResponse;
-          }
-
-          return {
-            response: validatedResponse,
-            coach: 'ZoneCoach AI',
-            model_used: groqRes.model_used,
-            health_conditions: activeConditions,
-          } as unknown as T;
-        } catch (e) {
-          console.warn('Groq direct call failed, using heuristic:', e);
-        }
-      }
 
       // Dynamic sports science heuristic response engine (contextual to user question)
       const msgLower = userMsg.toLowerCase().trim();

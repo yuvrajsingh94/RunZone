@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.security import encrypt_secret, decrypt_secret
 from app.models.user import User
 from app.models.activity import Activity
 from app.services.spatial_service import SpatialService
@@ -55,10 +56,9 @@ class StravaService:
             user = user_result.scalar_one_or_none()
             if user:
                 user.strava_athlete_id = str(athlete.get("id"))
-                user.strava_access_token = data.get("access_token")
-                user.strava_refresh_token = data.get("refresh_token")
+                user.strava_access_token = encrypt_secret(data.get("access_token"))
+                user.strava_refresh_token = encrypt_secret(data.get("refresh_token"))
                 user.strava_token_expires_at = data.get("expires_at")
-                user.is_strava_connected = True
                 await db.commit()
 
             return data
@@ -71,6 +71,9 @@ class StravaService:
 
         # If expired, refresh
         if user.strava_token_expires_at and user.strava_token_expires_at < datetime.now(timezone.utc).timestamp():
+            decrypted_refresh_token = decrypt_secret(user.strava_refresh_token)
+            if not decrypted_refresh_token:
+                return None
             async with httpx.AsyncClient() as client:
                 refresh_resp = await client.post(
                     cls.STRAVA_TOKEN_URL,
@@ -78,17 +81,17 @@ class StravaService:
                         "client_id": settings.STRAVA_CLIENT_ID,
                         "client_secret": settings.STRAVA_CLIENT_SECRET,
                         "grant_type": "refresh_token",
-                        "refresh_token": user.strava_refresh_token,
+                        "refresh_token": decrypted_refresh_token,
                     },
                 )
                 if refresh_resp.status_code == 200:
                     rdata = refresh_resp.json()
-                    user.strava_access_token = rdata.get("access_token")
-                    user.strava_refresh_token = rdata.get("refresh_token")
+                    user.strava_access_token = encrypt_secret(rdata.get("access_token"))
+                    user.strava_refresh_token = encrypt_secret(rdata.get("refresh_token"))
                     user.strava_token_expires_at = rdata.get("expires_at")
                     await db.commit()
 
-        return user.strava_access_token
+        return decrypt_secret(user.strava_access_token)
 
     @classmethod
     async def process_webhook_event(

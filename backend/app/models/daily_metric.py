@@ -1,11 +1,14 @@
 from datetime import date, datetime, timezone
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Date, Text, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Date, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
 class DailyMetric(Base):
     __tablename__ = "daily_metrics"
+    __table_args__ = (
+        UniqueConstraint("user_id", "metric_date", name="uq_user_daily_metric"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

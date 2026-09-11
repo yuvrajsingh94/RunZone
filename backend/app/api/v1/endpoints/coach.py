@@ -130,11 +130,17 @@ async def transcribe_voice_note(
     """
     Transcribe athlete audio voice note using Groq Whisper Large V3 Turbo with fallback.
     """
-    audio_bytes = await file.read()
+    MAX_AUDIO_BYTES = 25 * 1024 * 1024  # 25MB ceiling
+    audio_bytes = await file.read(MAX_AUDIO_BYTES + 1)
     if len(audio_bytes) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Empty audio file provided",
+        )
+    if len(audio_bytes) > MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Audio file exceeds maximum allowed size limit of 25MB.",
         )
 
     try:
@@ -151,7 +157,9 @@ async def transcribe_voice_note(
             },
         )
     except Exception as err:
+        import logging
+        logging.getLogger("runzone.coach").error(f"Audio transcription failed: {err}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Audio transcription failed: {str(err)}",
+            detail="Audio transcription service encountered a processing failure. Please try again.",
         )
