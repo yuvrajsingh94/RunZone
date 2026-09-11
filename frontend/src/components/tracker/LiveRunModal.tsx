@@ -302,227 +302,237 @@ export const LiveRunModal: React.FC<LiveRunModalProps> = ({ isOpen, onClose, onR
           </div>
         ) : (
           /* Live Tracking Cockpit Screen */
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-            {/* Left: Big Metrics Grid */}
-            <div className="w-full lg:w-1/2 p-4 sm:p-6 space-y-5 bg-panel flex flex-col justify-between overflow-y-auto">
-              {/* Giant Primary Metrics */}
-              <div className="space-y-4">
-                {/* Distance Metric */}
-                <div className="bg-night border border-hairline p-4 text-center">
-                  <div className="text-xs text-chalk-dim uppercase tracking-wider font-sans">
-                    Total distance
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* ── On portrait mobile: metrics top, map middle, voice HUD bottom ── */}
+            {/* ── On landscape / desktop lg: metrics left, map right side-by-side ─ */}
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+              {/* Left / Top: Big Metrics Grid */}
+              <div className="w-full lg:w-1/2 px-4 py-3 lg:p-6 space-y-3 bg-panel flex flex-col justify-between overflow-y-auto shrink-0">
+                {/* Giant Primary Metrics */}
+                <div className="space-y-3">
+                  {/* Distance Metric */}
+                  <div className="bg-night border border-hairline p-3 text-center">
+                    <div className="text-xs text-chalk-dim uppercase tracking-wider font-sans">
+                      Total distance
+                    </div>
+                    <div className="font-display text-3xl sm:text-5xl font-extrabold text-chalk tabular tracking-tight mt-1">
+                      {tracker.distanceKm.toFixed(2)}
+                      <span className="text-base sm:text-lg font-medium text-chalk-muted ml-1.5">km</span>
+                    </div>
                   </div>
-                  <div className="font-display text-4xl sm:text-5xl font-extrabold text-chalk tabular tracking-tight mt-1">
-                    {tracker.distanceKm.toFixed(2)}
-                    <span className="text-base sm:text-lg font-medium text-chalk-muted ml-1.5">km</span>
+
+                  {/* Pace & Time Row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-night border border-hairline p-3 text-center">
+                      <div className="text-[11px] text-chalk-dim uppercase font-sans">
+                        Current pace
+                      </div>
+                      <div className="font-display text-xl sm:text-3xl font-bold text-chalk tabular mt-1">
+                        {formatPace(tracker.currentPaceSecKm)}
+                        <span className="text-xs text-chalk-muted ml-1">/km</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-night border border-hairline p-3 text-center">
+                      <div className="text-[11px] text-chalk-dim uppercase font-sans">
+                        Elapsed time
+                      </div>
+                      <div className="font-display text-xl sm:text-3xl font-bold text-chalk tabular mt-1">
+                        {formatTime(tracker.elapsedSeconds)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secondary Telemetry Strip */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="bg-night border border-hairline p-2">
+                      <div className="text-[10px] text-chalk-dim flex items-center justify-center gap-1">
+                        <Zap className="w-3 h-3 text-cinder" />
+                        <span>Territory</span>
+                      </div>
+                      <div className="font-display font-semibold text-cinder tabular mt-0.5">
+                        +{tracker.territoryCapturedKm2} km²
+                      </div>
+                    </div>
+
+                    <div className="bg-night border border-hairline p-2">
+                      <div className="text-[10px] text-chalk-dim flex items-center justify-center gap-1">
+                        <Flame className="w-3 h-3 text-amber-500" />
+                        <span>Calories</span>
+                      </div>
+                      <div className="font-display font-semibold text-chalk tabular mt-0.5">
+                        {tracker.caloriesBurned} kcal
+                      </div>
+                    </div>
+
+                    <div className="bg-night border border-hairline p-2">
+                      <div className="text-[10px] text-chalk-dim flex items-center justify-center gap-1">
+                        <Mountain className="w-3 h-3 text-contour" />
+                        <span>Elevation</span>
+                      </div>
+                      <div className="font-display font-semibold text-chalk tabular mt-0.5">
+                        +{Math.round(tracker.elevationGainMeters)} m
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Pace & Time Row */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-night border border-hairline p-3.5 text-center">
-                    <div className="text-[11px] text-chalk-dim uppercase font-sans">
-                      Current pace
-                    </div>
-                    <div className="font-display text-2xl sm:text-3xl font-bold text-chalk tabular mt-1">
-                      {formatPace(tracker.currentPaceSecKm)}
-                      <span className="text-xs text-chalk-muted ml-1">/km</span>
-                    </div>
+                {/* Status Message / Error Banner */}
+                {tracker.errorMsg && (
+                  <div className="p-2.5 bg-[#2A1715] border border-[#C1432E] text-xs text-chalk">
+                    {tracker.errorMsg}
                   </div>
+                )}
 
-                  <div className="bg-night border border-hairline p-3.5 text-center">
-                    <div className="text-[11px] text-chalk-dim uppercase font-sans">
-                      Elapsed time
-                    </div>
-                    <div className="font-display text-2xl sm:text-3xl font-bold text-chalk tabular mt-1">
-                      {formatTime(tracker.elapsedSeconds)}
-                    </div>
-                  </div>
-                </div>
+                {/* Action Buttons */}
+                <div className="space-y-2 pt-1">
+                  {tracker.status === 'idle' && (
+                    <button
+                      onClick={tracker.startRun}
+                      className="w-full py-3 bg-cinder hover:bg-cinder-hover text-chalk font-display font-bold text-sm tracking-wide transition-colors flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>START GPS RUN</span>
+                    </button>
+                  )}
 
-                {/* Secondary Telemetry Strip */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="bg-night border border-hairline p-2">
-                    <div className="text-[10px] text-chalk-dim flex items-center justify-center gap-1">
-                      <Zap className="w-3 h-3 text-cinder" />
-                      <span>Territory</span>
+                  {tracker.status === 'tracking' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={tracker.pauseRun}
+                        className="py-3 bg-panel-light hover:bg-panel border border-hairline text-chalk font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Pause className="w-4 h-4" />
+                        <span>PAUSE</span>
+                      </button>
+                      <button
+                        onClick={tracker.finishRun}
+                        className="py-3 bg-cinder hover:bg-cinder-hover text-chalk font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Square className="w-4 h-4 fill-current" />
+                        <span>FINISH RUN</span>
+                      </button>
                     </div>
-                    <div className="font-display font-semibold text-cinder tabular mt-0.5">
-                      +{tracker.territoryCapturedKm2} km²
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="bg-night border border-hairline p-2">
-                    <div className="text-[10px] text-chalk-dim flex items-center justify-center gap-1">
-                      <Flame className="w-3 h-3 text-amber-500" />
-                      <span>Calories</span>
+                  {tracker.status === 'paused' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={tracker.resumeRun}
+                        className="py-3 bg-contour hover:bg-emerald-600 text-white font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>RESUME</span>
+                      </button>
+                      <button
+                        onClick={tracker.finishRun}
+                        className="py-3 bg-cinder hover:bg-cinder-hover text-chalk font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Square className="w-4 h-4 fill-current" />
+                        <span>FINISH RUN</span>
+                      </button>
                     </div>
-                    <div className="font-display font-semibold text-chalk tabular mt-0.5">
-                      {tracker.caloriesBurned} kcal
-                    </div>
-                  </div>
-
-                  <div className="bg-night border border-hairline p-2">
-                    <div className="text-[10px] text-chalk-dim flex items-center justify-center gap-1">
-                      <Mountain className="w-3 h-3 text-contour" />
-                      <span>Elevation</span>
-                    </div>
-                    <div className="font-display font-semibold text-chalk tabular mt-0.5">
-                      +{Math.round(tracker.elevationGainMeters)} m
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* Status Message / Error Banner */}
-              {tracker.errorMsg && (
-                <div className="p-2.5 bg-[#2A1715] border border-[#C1432E] text-xs text-chalk">
-                  {tracker.errorMsg}
+              {/* Right / Bottom: Live Dark Leaflet Map */}
+              {/* On mobile the map takes a fixed portion of the remaining viewport */}
+              <div className="w-full lg:w-1/2 h-48 sm:h-64 lg:h-auto relative bg-night lg:hairline-l shrink-0 lg:shrink">
+                <MapContainer
+                  center={defaultCenter}
+                  zoom={14}
+                  scrollWheelZoom={true}
+                  className="w-full h-full"
+                >
+                  <LiveMapController coords={tracker.coords} />
+
+                  {/* MapTiler Dark Streets Basemap */}
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY || ''}`}
+                    maxZoom={22}
+                    tileSize={256}
+                  />
+
+                  {/* Live Breadcrumbs Polyline */}
+                  {mapPolyline.length > 0 && (
+                    <>
+                      {/* 40m Buffered Glow Path */}
+                      <Polyline
+                        positions={mapPolyline}
+                        pathOptions={{
+                          color: '#B8492E',
+                          weight: 16,
+                          opacity: 0.35,
+                          lineCap: 'round',
+                          lineJoin: 'round',
+                        }}
+                      />
+                      {/* Sharp Core Polyline */}
+                      <Polyline
+                        positions={mapPolyline}
+                        pathOptions={{
+                          color: '#E05A3B',
+                          weight: 4,
+                          opacity: 0.95,
+                        }}
+                      />
+                      {/* Live Runner Position Pin */}
+                      <CircleMarker
+                        center={mapPolyline[mapPolyline.length - 1]}
+                        radius={7}
+                        pathOptions={{
+                          color: '#FFFFFF',
+                          fillColor: '#B8492E',
+                          fillOpacity: 1,
+                          weight: 2,
+                        }}
+                      />
+                    </>
+                  )}
+                </MapContainer>
+
+                {/* Map Overlay Badge */}
+                <div className="absolute top-2 left-2 z-[1000] bg-night/90 border border-hairline px-2 py-0.5 text-[10px] text-chalk font-display flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cinder inline-block animate-pulse" />
+                  <span>Live Route Breadcrumbs</span>
                 </div>
-              )}
 
-              {/* Action Buttons */}
-              <div className="space-y-2 pt-2">
-                {tracker.status === 'idle' && (
+                {/* Voice Coach Toggle Button — positioned bottom-right of map */}
+                <div className="absolute bottom-2 right-2 z-[1000]">
                   <button
-                    onClick={tracker.startRun}
-                    className="w-full py-3.5 bg-cinder hover:bg-cinder-hover text-chalk font-display font-bold text-sm tracking-wide transition-colors flex items-center justify-center gap-2 shadow-lg"
+                    onClick={() => setVoiceCoachOpen(!voiceCoachOpen)}
+                    className="px-2.5 py-1.5 bg-cinder hover:bg-cinder-hover text-chalk text-xs font-display font-bold shadow-2xl flex items-center gap-1.5 border border-white/20 transition-transform active:scale-95"
+                    title="Ask ZoneCoach with voice"
                   >
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>START GPS RUN</span>
+                    <Mic className={`w-3.5 h-3.5 ${voiceCoachOpen ? '' : 'animate-bounce'}`} />
+                    <span className="hidden sm:inline">{voiceCoachOpen ? 'Close Voice HUD' : 'Ask Coach'}</span>
                   </button>
-                )}
-
-                {tracker.status === 'tracking' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={tracker.pauseRun}
-                      className="py-3 bg-panel-light hover:bg-panel border border-hairline text-chalk font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <Pause className="w-4 h-4" />
-                      <span>PAUSE</span>
-                    </button>
-                    <button
-                      onClick={tracker.finishRun}
-                      className="py-3 bg-cinder hover:bg-cinder-hover text-chalk font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <Square className="w-4 h-4 fill-current" />
-                      <span>FINISH RUN</span>
-                    </button>
-                  </div>
-                )}
-
-                {tracker.status === 'paused' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={tracker.resumeRun}
-                      className="py-3 bg-contour hover:bg-emerald-600 text-white font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                      <span>RESUME</span>
-                    </button>
-                    <button
-                      onClick={tracker.finishRun}
-                      className="py-3 bg-cinder hover:bg-cinder-hover text-chalk font-display font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <Square className="w-4 h-4 fill-current" />
-                      <span>FINISH RUN</span>
-                    </button>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
 
-            {/* Right: Live Dark Leaflet Map with Breadcrumbs */}
-            <div className="w-full lg:w-1/2 h-64 lg:h-auto min-h-[300px] relative bg-night hairline-l">
-              <MapContainer
-                center={defaultCenter}
-                zoom={14}
-                scrollWheelZoom={true}
-                className="w-full h-full"
-              >
-                <LiveMapController coords={tracker.coords} />
+            {/* ── Voice Coach HUD ───────────────────────────────────────────────── */}
+            {/* Renders BELOW the map/metrics stack so it is never clipped.         */}
+            {/* On desktop it sits inside the map panel absolute-positioned;         */}
+            {/* on mobile it expands as a full-width panel at the bottom.            */}
+            {voiceCoachOpen && (
+              <div className="border-t border-hairline bg-night/98 backdrop-blur-md max-h-72 overflow-y-auto shrink-0">
+                <div className="flex items-center justify-between px-4 py-2 hairline-b">
+                  <span className="text-xs font-display font-bold text-chalk flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5 text-cinder animate-pulse" />
+                    <span>ZoneCoach In-Run Voice Assistant</span>
+                  </span>
+                  <button
+                    onClick={() => setVoiceCoachOpen(false)}
+                    className="p-1 text-chalk-dim hover:text-chalk"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-                {/* MapTiler Dark Streets Basemap */}
-                <TileLayer
-                  attribution='&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url={`https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_API_KEY || ''}`}
-                  maxZoom={22}
-                  tileSize={256}
-                />
-
-                {/* Live Breadcrumbs Polyline */}
-                {mapPolyline.length > 0 && (
-                  <>
-                    {/* 40m Buffered Glow Path */}
-                    <Polyline
-                      positions={mapPolyline}
-                      pathOptions={{
-                        color: '#B8492E',
-                        weight: 16,
-                        opacity: 0.35,
-                        lineCap: 'round',
-                        lineJoin: 'round',
-                      }}
-                    />
-                    {/* Sharp Core Polyline */}
-                    <Polyline
-                      positions={mapPolyline}
-                      pathOptions={{
-                        color: '#E05A3B',
-                        weight: 4,
-                        opacity: 0.95,
-                      }}
-                    />
-                    {/* Live Runner Position Pin */}
-                    <CircleMarker
-                      center={mapPolyline[mapPolyline.length - 1]}
-                      radius={7}
-                      pathOptions={{
-                        color: '#FFFFFF',
-                        fillColor: '#B8492E',
-                        fillOpacity: 1,
-                        weight: 2,
-                      }}
-                    />
-                  </>
-                )}
-              </MapContainer>
-
-              {/* Map Overlay Badge */}
-              <div className="absolute top-3 left-3 z-[1000] bg-night/90 border border-hairline px-2.5 py-1 text-[11px] text-chalk font-display flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-cinder inline-block animate-pulse" />
-                <span>Live Route Breadcrumbs</span>
-              </div>
-
-              {/* Floating Hands-Free Voice Coach Button */}
-              <div className="absolute bottom-4 right-4 z-[1000]">
-                <button
-                  onClick={() => setVoiceCoachOpen(!voiceCoachOpen)}
-                  className="px-3.5 py-2 bg-cinder hover:bg-cinder-hover text-chalk text-xs font-display font-bold shadow-2xl flex items-center gap-2 border border-white/20 transition-transform active:scale-95"
-                  title="Ask ZoneCoach a question with your voice hands-free"
-                >
-                  <Mic className="w-4 h-4 animate-bounce" />
-                  <span>{voiceCoachOpen ? 'Close Voice HUD' : 'Ask Coach (Voice)'}</span>
-                </button>
-              </div>
-
-              {/* Collapsible Voice Coach HUD */}
-              {voiceCoachOpen && (
-                <div className="absolute inset-x-3 bottom-14 z-[1001] bg-night/95 backdrop-blur-md border border-hairline p-3 shadow-2xl space-y-2 max-h-72 overflow-y-auto">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-display font-bold text-chalk flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5 text-cinder animate-pulse" />
-                      <span>ZoneCoach In-Run Voice Assistant</span>
-                    </span>
-                    <button
-                      onClick={() => setVoiceCoachOpen(false)}
-                      className="p-1 text-chalk-dim hover:text-chalk"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
+                <div className="p-3 space-y-2">
                   <VoiceCoachRecorder
                     onTranscriptionComplete={() => {}}
                     onAssistantResponse={(response) => setCoachAdvice(response)}
@@ -538,9 +548,10 @@ export const LiveRunModal: React.FC<LiveRunModalProps> = ({ isOpen, onClose, onR
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+
         )}
       </div>
     </div>

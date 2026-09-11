@@ -50,8 +50,8 @@ export const TerritoryWarRoom: React.FC<TerritoryWarRoomProps> = ({
     <div className="p-4 lg:p-6 space-y-4 max-w-7xl mx-auto font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-chalk">
               Territory War Room
             </h1>
@@ -65,11 +65,12 @@ export const TerritoryWarRoom: React.FC<TerritoryWarRoomProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action buttons — wrap on mobile, inline on sm+ */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Tactical Route Planner Trigger */}
           <button
             onClick={onOpenRoutePlanner}
-            className="bg-panel hover:bg-panel-light text-chalk border border-hairline text-xs font-medium px-3.5 py-1.5 transition-colors flex items-center gap-1.5"
+            className="bg-panel hover:bg-panel-light text-chalk border border-hairline text-xs font-medium px-3 py-1.5 transition-colors flex items-center gap-1.5"
           >
             <Route className="w-3.5 h-3.5 text-cinder" />
             <span>Plan Route</span>
@@ -78,7 +79,7 @@ export const TerritoryWarRoom: React.FC<TerritoryWarRoomProps> = ({
           {onOpenLiveTracker && (
             <button
               onClick={onOpenLiveTracker}
-              className="bg-cinder hover:bg-cinder-hover text-chalk text-xs font-medium px-3.5 py-1.5 transition-colors flex items-center gap-1.5 shadow-sm"
+              className="bg-cinder hover:bg-cinder-hover text-chalk text-xs font-medium px-3 py-1.5 transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Radio className="w-3.5 h-3.5 animate-pulse text-white" />
               <span>Record GPS run</span>

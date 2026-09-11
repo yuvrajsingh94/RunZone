@@ -612,16 +612,44 @@ class LLMCoachService:
             weeks=fallback_weeks,
         )
 
+    # ── MIME type map for Groq Whisper multipart upload ───────────────────────
+    # Resolves the correct Content-Type from filename extension so that
+    # iOS Safari (audio/mp4) and Android Chrome (audio/webm) are both handled.
+    # The old hardcoded "audio/m4a" caused HTTP 400 on every mobile browser.
+    _MIME_BY_EXT: dict = {
+        "webm": "audio/webm",
+        "mp4":  "audio/mp4",
+        "m4a":  "audio/mp4",   # m4a container is MPEG-4 Audio
+        "ogg":  "audio/ogg",
+        "mp3":  "audio/mpeg",
+        "wav":  "audio/wav",
+        "flac": "audio/flac",
+    }
+
     @classmethod
-    async def transcribe_audio(cls, audio_bytes: bytes, filename: str = "voice_note.m4a") -> Tuple[str, str]:
+    def _resolve_audio_mime(cls, filename: str) -> str:
+        """Derive MIME type from filename extension for Groq Whisper multipart."""
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "webm"
+        return cls._MIME_BY_EXT.get(ext, "audio/webm")
+
+    @classmethod
+    async def transcribe_audio(cls, audio_bytes: bytes, filename: str = "voice_note.webm") -> Tuple[str, str]:
         """
         Transcribe voice notes using Groq Whisper models with fallback chain:
         whisper-large-v3-turbo -> whisper-large-v3
         Returns: (transcription_text, model_used)
+
+        FIX (mobile voice): MIME type is now derived from filename extension.
+        iOS Safari records audio/mp4; Android Chrome records audio/webm;codecs=opus.
+        The previous hardcoded 'audio/m4a' caused HTTP 400 errors on all mobile browsers.
         """
         api_key = cls.get_groq_api_key()
         if not api_key:
             raise ValueError("GROQ_API_KEY is not configured")
+
+        # Resolve MIME from extension — this is what Groq uses for codec detection
+        content_type = cls._resolve_audio_mime(filename)
+        logger.info("Audio transcription request: filename=%r resolved_mime=%r", filename, content_type)
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -634,7 +662,7 @@ class LLMCoachService:
             for model_id in whisper_models:
                 try:
                     files = {
-                        "file": (filename, audio_bytes, "audio/m4a"),
+                        "file": (filename, audio_bytes, content_type),
                     }
                     data = {
                         "model": model_id,
@@ -652,7 +680,12 @@ class LLMCoachService:
                         return res_json.get("text", "").strip(), model_id
                     else:
                         last_error = response.text
+                        logger.warning(
+                            "Whisper model %r returned HTTP %s: %s",
+                            model_id, response.status_code, response.text[:400],
+                        )
                 except Exception as ex:
                     last_error = str(ex)
+                    logger.warning("Whisper model %r raised exception: %s", model_id, ex)
 
         raise RuntimeError(f"Whisper transcription failed across models: {last_error}")

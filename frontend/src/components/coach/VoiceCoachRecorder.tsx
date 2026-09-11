@@ -1,7 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Mic, Square, Volume2, VolumeX, Loader2, Sparkles, Radio } from 'lucide-react';
+import { Mic, Square, Volume2, VolumeX, Loader2, Radio } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// ── Cross-browser MIME negotiation ─────────────────────────────────────────
+// iOS Safari only supports audio/mp4. Android Chrome supports audio/webm;codecs=opus.
+// We probe MediaRecorder.isTypeSupported() at runtime so the correct codec and
+// file extension are sent to the backend, which passes them to Groq Whisper.
+// ──────────────────────────────────────────────────────────────────────────
+const AUDIO_MIME_CANDIDATES = [
+  'audio/webm;codecs=opus',
+  'audio/mp4;codecs=mp4a.40.2',
+  'audio/webm',
+  'audio/mp4',
+  'audio/ogg;codecs=opus',
+];
+
+function getSupportedMimeType(): string {
+  if (typeof MediaRecorder === 'undefined') return '';
+  for (const mime of AUDIO_MIME_CANDIDATES) {
+    if (MediaRecorder.isTypeSupported(mime)) return mime;
+  }
+  return '';
+}
+
+function mimeToExtension(mime: string): string {
+  if (mime.startsWith('audio/mp4')) return 'mp4';
+  if (mime.startsWith('audio/ogg')) return 'ogg';
+  return 'webm'; // covers audio/webm and unknown fallback
+}
 
 interface VoiceCoachRecorderProps {
   onTranscriptionComplete: (text: string) => void;
@@ -26,6 +53,8 @@ export const VoiceCoachRecorder: React.FC<VoiceCoachRecorderProps> = ({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  /** Stores the negotiated MIME type for the current recording session */
+  const recordingMimeRef = useRef<string>('audio/webm');
 
   // Clean up speech on unmount
   useEffect(() => {
@@ -100,7 +129,22 @@ export const VoiceCoachRecorder: React.FC<VoiceCoachRecorderProps> = ({
       };
       updateVisualizer();
 
-      const mediaRecorder = new MediaRecorder(stream);
+      // ── Negotiate MIME type at runtime ────────────────────────────────────
+      // iOS Safari only supports audio/mp4; Android Chrome supports webm;codecs=opus.
+      // Choosing a wrong mimeType causes DOMException, so we wrap in try/catch.
+      const mimeType = getSupportedMimeType();
+      recordingMimeRef.current = mimeType || 'audio/webm';
+
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+        // Read back actual mime (browser may adjust)
+        recordingMimeRef.current = mediaRecorder.mimeType || recordingMimeRef.current;
+      } catch {
+        mediaRecorder = new MediaRecorder(stream);
+        recordingMimeRef.current = mediaRecorder.mimeType || 'audio/webm';
+      }
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -113,8 +157,9 @@ export const VoiceCoachRecorder: React.FC<VoiceCoachRecorderProps> = ({
         if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
         setAudioLevel(0);
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await processAudio(audioBlob);
+        const resolvedMime = recordingMimeRef.current;
+        const audioBlob = new Blob(audioChunksRef.current, { type: resolvedMime });
+        await processAudio(audioBlob, resolvedMime);
       };
 
       mediaRecorder.start();
@@ -122,8 +167,14 @@ export const VoiceCoachRecorder: React.FC<VoiceCoachRecorderProps> = ({
       setIsRecording(true);
       setStatusText('Listening… speak naturally about your training');
     } catch (err: any) {
-      console.error('Microphone access error:', err);
-      toast.error('Microphone permission required for voice coach.');
+      console.error('[VoiceCoach] Mic error:', err);
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        toast.error('Microphone permission denied. Enable it in your browser settings.');
+      } else if (err?.name === 'NotFoundError') {
+        toast.error('No microphone found on this device.');
+      } else {
+        toast.error('Could not start recording. Please check your microphone.');
+      }
     }
   };
 
@@ -138,17 +189,38 @@ export const VoiceCoachRecorder: React.FC<VoiceCoachRecorderProps> = ({
   };
 
   // Process and transcribe audio, then query coach
-  const processAudio = async (blob: Blob) => {
+  const processAudio = async (blob: Blob, mime: string) => {
     setIsProcessing(true);
     try {
-      const audioFile = new File([blob], 'coach_query.webm', { type: 'audio/webm' });
-      
+      // Pass correct extension so Groq Whisper detects the codec correctly
+      const ext = mimeToExtension(mime);
+      const audioFile = new File([blob], `coach_query.${ext}`, { type: mime });
+
       // Transcribe via Whisper
-      const transRes = await api.transcribeAudio(audioFile);
-      const userPrompt = transRes.text.trim();
+      let transRes: any;
+      try {
+        transRes = await api.transcribeAudio(audioFile);
+      } catch (err: any) {
+        const httpStatus = err?.response?.status ?? 0;
+        const detail: string = err?.response?.data?.detail || err?.message || '';
+        if (httpStatus === 413) {
+          toast.error('Recording too large. Keep voice queries under 25 MB.');
+        } else if (httpStatus === 400 || detail.toLowerCase().includes('format')) {
+          toast.error(`Audio format not supported (${ext}). Try Chrome or Firefox.`);
+        } else if (httpStatus === 401 || httpStatus === 403) {
+          toast.error('Session expired. Please refresh and log in again.');
+        } else {
+          toast.error('Transcription failed. Check your connection and try again.');
+        }
+        setIsProcessing(false);
+        setStatusText('Tap mic to speak with ZoneCoach');
+        return;
+      }
+
+      const userPrompt = (transRes?.text || '').trim();
 
       if (!userPrompt) {
-        toast.error('Could not detect speech. Please try again.');
+        toast.error('No speech detected. Please speak clearly and try again.');
         setIsProcessing(false);
         setStatusText('Tap mic to speak with ZoneCoach');
         return;
@@ -158,8 +230,16 @@ export const VoiceCoachRecorder: React.FC<VoiceCoachRecorderProps> = ({
       setStatusText('ZoneCoach Llama 3.3 70B is thinking…');
 
       // Call coach chat completion
-      const coachRes: any = await api.chatWithCoach(userPrompt);
-      
+      let coachRes: any;
+      try {
+        coachRes = await api.chatWithCoach(userPrompt);
+      } catch {
+        toast.error('Coach response failed. Your question was heard — please try again.');
+        setIsProcessing(false);
+        setStatusText('Tap mic to speak with ZoneCoach');
+        return;
+      }
+
       if (onAssistantResponse) {
         onAssistantResponse(coachRes.response, coachRes.model_used || 'llama-3.3-70b-versatile');
       }
@@ -171,13 +251,14 @@ export const VoiceCoachRecorder: React.FC<VoiceCoachRecorderProps> = ({
         setStatusText('Tap mic to speak with ZoneCoach');
       }
     } catch (e: any) {
-      console.error('Voice coach error:', e);
-      toast.error('Voice processing failed.');
+      console.error('[VoiceCoach] processAudio error:', e);
+      toast.error('Voice processing failed. Please try again.');
       setStatusText('Tap mic to speak with ZoneCoach');
     } finally {
       setIsProcessing(false);
     }
   };
+
 
   return (
     <div className="bg-night border border-hairline p-4 space-y-3 font-sans">
