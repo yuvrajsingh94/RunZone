@@ -180,6 +180,72 @@ class CoachGuardrails:
         return "\n".join(rules)
 
     @classmethod
+    def build_onboarding_block(
+        cls,
+        onboarding_status: Optional[str] = None,
+        experience_level: Optional[str] = None,
+        training_goal: Optional[str] = None,
+        weekly_frequency: Optional[str] = None,
+        territory_context: Optional[str] = None,
+    ) -> str:
+        """
+        Single canonical generator for the onboarding profile block injected into Tier 2 prompts.
+        Used identically by both chat_with_coach() and generate_daily_briefing().
+        """
+        if onboarding_status == "completed":
+            goal_framing_map = {
+                "aerobic_base": (
+                    "GOAL FRAMING — Aerobic Base: Prioritise Zone 2 language, long slow distance, "
+                    "consistency, and heart-health framing. Avoid pace obsession."
+                ),
+                "first_5k_10k": (
+                    "GOAL FRAMING — First 5K/10K: Frame advice around race-readiness, progressive "
+                    "distance build, and completion confidence. Use beginner-accessible pacing cues."
+                ),
+                "speed_pr": (
+                    "GOAL FRAMING — Speed PR: Emphasise pace targets, interval structure, and lactate "
+                    "threshold development. NOTE: this framing is preference only — if ACWR > 1.30, "
+                    "revert immediately to aerobic_base framing; never prescribe speedwork above that threshold."
+                ),
+                "territory": (
+                    "GOAL FRAMING — Territory: Frame advice around RunZone map conquest — loop routing, "
+                    "sector capture efficiency, and maintaining aerobic fitness for frequent patrol runs."
+                ),
+            }
+            goal_framing = goal_framing_map.get(training_goal or "", "")
+            freq_map = {"2_3": "2–3 times/week", "4_5": "4–5 times/week", "6_plus": "6+ times/week"}
+            freq_label = freq_map.get(weekly_frequency or "", weekly_frequency or "not specified")
+            territory_section = ""
+            if training_goal == "territory" and territory_context:
+                territory_section = f"\n        Territory Intelligence: {territory_context}"
+
+            return (
+                f"Athlete Training Profile:\n"
+                f"        - Experience Level: {experience_level}\n"
+                f"        - Primary Training Goal: {training_goal}\n"
+                f"        - Weekly Training Frequency: {freq_label}{territory_section}\n"
+                f"        {goal_framing}\n"
+                f"        Personalise all workout recommendations, pacing guidance, and motivational "
+                f"framing to match the athlete's declared experience level and goal. Do not contradict "
+                f"the Workload Safety Rule below."
+            )
+        else:
+            nudge = (
+                "Once — not every message — invite them to finish the quick setup quiz for more tailored coaching."
+                if onboarding_status == "skipped"
+                else
+                "Once — not every message — mention they can set up their profile for more tailored coaching."
+            )
+            return (
+                f"Athlete Training Profile: Not provided.\n"
+                f"        Do not guess the athlete's experience level or goal. Do not say phrases like "
+                f"\"since you're a beginner\" or \"since your goal is X\" — you don't have that data. "
+                f"Default to safe, general Zone 1-2 guidance driven only by the physiological context above. "
+                f"{nudge}"
+            )
+
+
+    @classmethod
     def check_medical_red_flags(cls, prompt: str) -> Optional[str]:
         """
         Screens for acute critical symptoms and returns an emergency triage referral if triggered.

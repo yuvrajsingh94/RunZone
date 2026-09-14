@@ -98,9 +98,12 @@ async def chat_with_coach(
     new_conditions = CoachGuardrails.extract_health_conditions(payload.message)
     if new_conditions:
         updated = False
+        existing_lower = {h.strip().lower() for h in health_list}
         for cond in new_conditions:
-            if cond not in health_list:
-                health_list.append(cond)
+            cond_clean = cond.strip()
+            if cond_clean and cond_clean.lower() not in existing_lower:
+                health_list.append(cond_clean)
+                existing_lower.add(cond_clean.lower())
                 updated = True
         if updated:
             current_user.health_conditions = ", ".join(health_list)

@@ -255,7 +255,12 @@ export class CoachGuardrails {
   /**
    * Post-execution output validator.
    */
-  public static validateOutput(responseText: string, acwr: number, healthConditions?: string[]): string {
+  public static validateOutput(
+    responseText: string,
+    acwr: number,
+    healthConditions?: string[],
+    onboardingStatus?: string,
+  ): string {
     const hasHeartIssue = healthConditions && healthConditions.some((c) => c.toLowerCase().includes('heart') || c.toLowerCase().includes('cardiovascular'));
 
     if (hasHeartIssue) {
@@ -282,6 +287,17 @@ export class CoachGuardrails {
         );
       }
     }
+
+    // Layer 3: Persona-fabrication guard
+    if (onboardingStatus && onboardingStatus !== 'completed') {
+      const fabricatedRegex = /[^.!?]*(?:since you(?:'re| are) a (?:beginner|regular|endurance runner)|since your goal is|as a (?:beginner|regular runner)|given that you(?:'re| are) a (?:beginner|regular|endurance))[^.!?]*[.!?]?/gi;
+      const cleaned = responseText.replace(fabricatedRegex, '').trim();
+      if (cleaned) {
+        responseText = cleaned;
+      }
+    }
+
     return responseText;
   }
 }
+
