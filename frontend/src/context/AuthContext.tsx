@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedAccessToken = localStorage.getItem('runzone_access_token');
       const storedUser = localStorage.getItem('runzone_user');
 
-      if (storedAccessToken && storedUser) {
+      if (storedAccessToken && storedUser && storedAccessToken !== 'demo_access_token_jwt') {
         try {
           setUser(JSON.parse(storedUser));
           const freshUser = await api.getMe().catch(() => null);
@@ -39,10 +39,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
         }
       } else {
-        // Automatically provide demo athlete login for immediate zero-friction exploration
-        loginDemoUser();
+        // Automatically provide real demo athlete login with signed JWT from backend
+        await loginDemoUser();
       }
       setLoading(false);
+
     };
 
     initAuth();
@@ -72,12 +73,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('runzone_user', JSON.stringify(updated));
   };
 
-  const loginDemoUser = (role: UserRole = 'runner') => {
+  const loginDemoUser = async (role: UserRole = 'runner') => {
+    const demoEmail = role === 'admin' ? 'zonecommander@runzone.ai' : 'athlete@runzone.ai';
+    try {
+      const res = await api.login(demoEmail, 'Password123!', true);
+      login(res.access_token, res.refresh_token, res.user);
+      return;
+    } catch (e) {
+      console.warn('Real backend demo login unavailable, using offline fallback', e);
+    }
+
     const demoUser: User = {
       id: 1,
-      email: 'athlete@runzone.ai',
-      username: 'ApexRunner',
-      full_name: 'Alex Mercer',
+      email: demoEmail,
+      username: role === 'admin' ? 'ZoneCommander' : 'ApexRunner',
+      full_name: role === 'admin' ? 'Commander Drake' : 'Alex Mercer',
       role: role,
       avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       level: 7,
@@ -97,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     login('demo_access_token_jwt', 'demo_refresh_token_jwt', demoUser);
   };
+
 
   const hasRole = (role: UserRole | UserRole[]): boolean => {
     if (!user) return false;
