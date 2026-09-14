@@ -795,6 +795,32 @@ For today's session, maintain an aerobic effort in **Zone 2 (${karvonenZones['Zo
       } as unknown as T;
     }
 
+    if (endpoint.includes('/auth/onboarding')) {
+      let parsedBody: any = {};
+      try {
+        parsedBody = JSON.parse(options.body as string);
+      } catch (e) {}
+
+      let storedUser: any = {};
+      try {
+        storedUser = JSON.parse(localStorage.getItem('runzone_user') || '{}');
+      } catch (e) {}
+
+      if (parsedBody.action === 'complete') {
+        storedUser.onboarding_status = 'completed';
+        if (parsedBody.experience_level) storedUser.experience_level = parsedBody.experience_level;
+        if (parsedBody.training_goal) storedUser.training_goal = parsedBody.training_goal;
+        if (parsedBody.weekly_frequency) storedUser.weekly_frequency = parsedBody.weekly_frequency;
+        if (parsedBody.health_conditions) storedUser.health_conditions = parsedBody.health_conditions;
+      } else {
+        storedUser.onboarding_status = 'skipped';
+      }
+      try {
+        localStorage.setItem('runzone_user', JSON.stringify(storedUser));
+      } catch (e) {}
+      return storedUser as unknown as T;
+    }
+
     throw new Error(`Unable to connect to backend at ${API_BASE_URL}${endpoint}`);
   }
 

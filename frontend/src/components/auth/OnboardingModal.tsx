@@ -78,10 +78,26 @@ export const OnboardingModal: React.FC<Props> = ({ user, onComplete, onSkip }) =
       }
       onComplete(updated);
     } catch {
-      // noop — let user retry
+      const fallbackUpdated: User = {
+        ...user,
+        onboarding_status: 'completed',
+        experience_level: experience,
+        training_goal: goal,
+        weekly_frequency: frequency,
+        health_conditions: healthConditions.filter((c) => c !== 'None'),
+      };
+      setStep(5);
+      try {
+        const b = await api.getDailyBriefing();
+        setBriefing(b);
+      } catch {
+        setBriefingError(true);
+      }
+      onComplete(fallbackUpdated);
     } finally {
       setSubmitting(false);
     }
+
   };
 
   const canAdvance = () => {
