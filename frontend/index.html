@@ -18,7 +18,7 @@
         padding: 0;
       }
     </style>
-    <!-- Purge stale PWA service workers that break SPA chunk loading across deploys -->
+    <!-- Purge stale PWA service workers and auto-recover from stale chunk mismatch across deploys -->
     <script>
       try {
         if ('serviceWorker' in navigator) {
@@ -32,6 +32,20 @@
           });
         }
       } catch (e) {}
+
+      // Automatically reload if browser disk cache requested an old chunk from a prior deployment
+      window.addEventListener('error', function(e) {
+        var target = e.target;
+        if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
+          var key = 'runzone_last_chunk_recovery';
+          var last = parseInt(sessionStorage.getItem(key) || '0', 10);
+          if (Date.now() - last > 8000) {
+            sessionStorage.setItem(key, String(Date.now()));
+            console.warn('[RunZone] Stale asset detected, refreshing to latest deployment...');
+            window.location.reload(true);
+          }
+        }
+      }, true);
     </script>
     <!-- Archivo & Inter Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
