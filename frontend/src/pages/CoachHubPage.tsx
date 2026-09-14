@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { DailyCoachBriefing, WorkoutDay } from '../types';
-import { Send, Loader2, Cpu, HeartPulse, Sparkles, X } from 'lucide-react';
+import { Send, Loader2, Cpu, HeartPulse, Sparkles, X, HelpCircle, MessageSquare } from 'lucide-react';
 import { MarkdownMessage } from '../components/coach/MarkdownMessage';
 import { TrainingPlanModal } from '../components/coach/TrainingPlanModal';
 import { VoiceCoachRecorder } from '../components/coach/VoiceCoachRecorder';
@@ -122,14 +123,14 @@ export const CoachHubPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setOnboardingModalOpen(true)}
+          <Link
+            to="/onboarding"
             className="px-3.5 py-1.5 bg-panel hover:bg-panel-light text-chalk text-xs font-display font-medium border border-hairline transition-colors flex items-center gap-1.5 shadow-sm"
-            title="Calibrate your ZoneCoach athlete profile"
+            title="View and retake the 4-question runner calibration quiz"
           >
-            <Cpu className="w-3.5 h-3.5 text-cinder" />
-            <span>Calibrate Profile</span>
-          </button>
+            <HelpCircle className="w-3.5 h-3.5 text-cinder" />
+            <span>Runner Quiz (4 Qs)</span>
+          </Link>
           <button
             onClick={() => setPlanModalOpen(true)}
             className="px-3.5 py-1.5 bg-cinder hover:bg-cinder-hover text-chalk text-xs font-display font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
@@ -138,6 +139,22 @@ export const CoachHubPage: React.FC = () => {
             <span>Generate Plan</span>
           </button>
         </div>
+      </div>
+
+      {/* Mode Navigation Tabs */}
+      <div className="flex items-center gap-1 bg-night border border-hairline p-1 w-fit">
+        <div className="px-3.5 py-1.5 bg-panel border border-hairline text-chalk font-display font-bold text-xs flex items-center gap-2 shadow-xs">
+          <MessageSquare className="w-3.5 h-3.5 text-cinder" />
+          <span>ZoneCoach Chat Console</span>
+        </div>
+        <Link
+          to="/onboarding"
+          className="px-3.5 py-1.5 text-chalk-muted hover:text-chalk hover:bg-panel-light font-display font-medium text-xs flex items-center gap-2 transition-colors"
+        >
+          <HelpCircle className="w-3.5 h-3.5 text-chalk-dim" />
+          <span>Runner Profile Quiz</span>
+          <span className="px-1.5 py-0.5 bg-cinder/20 text-cinder text-[10px] font-bold">4 Questions</span>
+        </Link>
       </div>
 
 

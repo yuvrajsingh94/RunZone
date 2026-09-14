@@ -181,13 +181,13 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
 
   return (
     <div
-      className={`relative w-full overflow-hidden bg-night ${
+      className={`relative w-full overflow-hidden bg-night isolate z-0 ${
         fullBleed ? 'border-y border-hairline' : 'border border-hairline'
       }`}
       style={{ height }}
     >
       {/* Top Left Status Overlay */}
-      <div className="absolute top-3 left-3 z-[9000] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
+      <div className="absolute top-3 left-3 z-[1001] bg-night/90 backdrop-blur-sm border border-hairline px-3 py-1.5 flex items-center gap-3 text-xs shadow-md">
         <div className="flex items-center gap-1.5 text-chalk font-display font-semibold">
           <span className="w-2 h-2 rounded-full bg-cinder inline-block animate-pulse" />
           <span>Live Tactical Grid · {mapMode === 'satellite' ? 'Satellite Imagery' : 'MapTiler Dark'}</span>
@@ -199,7 +199,7 @@ export const TerritoryMap: React.FC<TerritoryMapProps> = ({
       </div>
 
       {/* Top Right Tactical Controls */}
-      <div className="absolute top-3 right-3 z-[9000] flex items-center gap-1.5">
+      <div className="absolute top-3 right-3 z-[1001] flex items-center gap-1.5">
         {/* Basemap Switcher (Dark vs Satellite) */}
         <div className="flex items-center bg-night/90 backdrop-blur-sm border border-hairline p-0.5 shadow-md">
           <button

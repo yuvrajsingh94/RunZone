@@ -25,6 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { path: '/territories', label: 'Territory map' },
     { path: '/analytics', label: 'Fatigue & ACWR' },
     { path: '/coach', label: 'Coach' },
+    { path: '/onboarding', label: 'Runner Quiz (4 Qs)' },
     { path: '/activities', label: 'Activities' },
     { path: '/leaderboard', label: 'Leaderboard' },
   ];

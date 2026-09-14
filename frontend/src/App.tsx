@@ -15,6 +15,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { ProtectedRoute } from './components/guards/ProtectedRoute';
 import { SimulateRunModal } from './components/activity/SimulateRunModal';
 import { LogRunModal } from './components/activity/LogRunModal';
@@ -109,6 +110,8 @@ export default function App() {
                 <Route path="/warroom" element={<Navigate to="/territories" replace />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/coach" element={<CoachHubPage />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/quiz" element={<Navigate to="/onboarding" replace />} />
                 <Route
                   path="/activities"
                   element={

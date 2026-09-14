@@ -64,7 +64,7 @@ export const CoachChatDrawer: React.FC<CoachChatDrawerProps> = ({ isOpen, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/70 animate-fade-in" role="dialog" aria-modal="true" aria-label="AI Coach chat panel">
+    <div className="fixed inset-0 z-[9999] flex justify-end bg-black/70 animate-fade-in" role="dialog" aria-modal="true" aria-label="AI Coach chat panel">
       <div className="w-full max-w-md bg-panel hairline-l flex flex-col h-full shadow-2xl">
         {/* Header */}
         <div className="p-4 hairline-b flex items-center justify-between bg-night">
