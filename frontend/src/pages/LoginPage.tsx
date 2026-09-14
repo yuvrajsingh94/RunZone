@@ -176,7 +176,37 @@ export const LoginPage: React.FC = () => {
             >
               Admin mode (ZoneCommander)
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                const pendingRunner = {
+                  id: 99,
+                  email: 'newrunner@runzone.ai',
+                  username: 'NewRunner',
+                  full_name: 'New Athlete',
+                  role: 'runner' as const,
+                  level: 1,
+                  xp: 0,
+                  total_distance_km: 0,
+                  total_territory_km2: 0,
+                  faction_color: '#3B82F6',
+                  resting_hr: 58,
+                  max_hr: 190,
+                  is_verified: true,
+                  is_strava_connected: false,
+                  onboarding_status: 'pending' as const,
+                  created_at: new Date().toISOString(),
+                };
+                login('demo_access_token_jwt', 'demo_refresh_token_jwt', pendingRunner);
+                toast.success('Signed in as new athlete. Calibrating ZoneCoach...');
+                navigate('/');
+              }}
+              className="w-full py-1.5 bg-cinder/10 hover:bg-cinder/20 text-cinder text-xs border border-cinder/30 transition-colors font-medium flex items-center justify-center gap-1.5"
+            >
+              <span>⚡ Start Fresh Runner (Test Onboarding Quiz)</span>
+            </button>
           </div>
+
 
           <div className="text-center text-xs text-chalk-dim pt-1">
             New athlete?{' '}

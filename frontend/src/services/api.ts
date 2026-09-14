@@ -780,10 +780,10 @@ For today's session, maintain an aerobic effort in **Zone 2 (${karvonenZones['Zo
         max_hr: 194,
         is_verified: true,
         is_strava_connected: true,
-        onboarding_status: 'completed',
-        experience_level: 'regular',
-        training_goal: 'aerobic_base',
-        weekly_frequency: '4_5',
+        onboarding_status: endpoint.includes('/auth/register') ? 'pending' : 'completed',
+        experience_level: endpoint.includes('/auth/register') ? undefined : 'regular',
+        training_goal: endpoint.includes('/auth/register') ? undefined : 'aerobic_base',
+        weekly_frequency: endpoint.includes('/auth/register') ? undefined : '4_5',
         created_at: new Date().toISOString(),
       };
       return {

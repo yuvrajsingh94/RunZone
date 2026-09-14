@@ -123,6 +123,14 @@ export const CoachHubPage: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setOnboardingModalOpen(true)}
+            className="px-3.5 py-1.5 bg-panel hover:bg-panel-light text-chalk text-xs font-display font-medium border border-hairline transition-colors flex items-center gap-1.5 shadow-sm"
+            title="Calibrate your ZoneCoach athlete profile"
+          >
+            <Cpu className="w-3.5 h-3.5 text-cinder" />
+            <span>Calibrate Profile</span>
+          </button>
+          <button
             onClick={() => setPlanModalOpen(true)}
             className="px-3.5 py-1.5 bg-cinder hover:bg-cinder-hover text-chalk text-xs font-display font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
           >
@@ -131,6 +139,7 @@ export const CoachHubPage: React.FC = () => {
           </button>
         </div>
       </div>
+
 
       {/* Quiet Skipped Profile Nudge Banner */}
       {user?.onboarding_status === 'skipped' && !bannerDismissed && (
