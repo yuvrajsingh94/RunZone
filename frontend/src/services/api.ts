@@ -18,8 +18,10 @@ import {
 } from '../types';
 import { CoachGuardrails } from './coachGuardrails';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://runzone-backend-production.up.railway.app/api/v1';
-// Enterprise standard: API keys are strictly maintained on backend servers.
+const rawEnvUrl = (import.meta as any).env?.VITE_API_URL || '';
+const API_BASE_URL = (rawEnvUrl && !rawEnvUrl.includes('7895'))
+  ? rawEnvUrl
+  : 'https://runzone-backend-production.up.railway.app/api/v1';
 
 
 // Mock San Francisco GeoJSON territory polygons
@@ -337,37 +339,39 @@ class ApiService {
     this.refreshSubscribers = [];
   }
 
-  private addRefreshSubscriber(cb: (token: string) => void) {
-    this.refreshSubscribers.push(cb);
-  }
+  private demoAuthPromise: Promise<string | null> | null = null;
 
-  /**
-   * Enterprise LLM Inference Caller: Routes requests strictly through backend gateway
-   */
-  public async callGroqDirect(
-    messages: Array<{ role: string; content: string }>,
-    temperature: number = 0.6,
-    max_tokens: number = 800,
-    jsonMode: boolean = false
-  ): Promise<{ response: string; model_used: string }> {
-    const lastMessage = messages[messages.length - 1]?.content || '';
-    const history = messages.slice(0, -1);
-    try {
-      const res: any = await this.request('/coach/chat', {
-        method: 'POST',
-        body: JSON.stringify({
-          message: lastMessage,
-          conversation_history: history,
-        }),
-      });
-      return {
-        response: res.response || res.data?.response || '',
-        model_used: res.model_used || 'ZoneCoach Backend Engine',
-      };
-    } catch (err) {
-      console.warn('Backend LLM coach endpoint unavailable:', err);
-      throw err;
-    }
+  public async acquireDemoToken(): Promise<string | null> {
+    if (this.demoAuthPromise) return this.demoAuthPromise;
+    this.demoAuthPromise = (async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const demoAuthRes = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'athlete@runzone.ai', password: 'Password123!' }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (demoAuthRes.ok) {
+          const authData = await demoAuthRes.json();
+          if (authData?.data?.access_token) {
+            this.setTokens(authData.data.access_token, authData.data.refresh_token);
+            if (authData.data.user) {
+              localStorage.setItem('runzone_user', JSON.stringify(authData.data.user));
+            }
+            return authData.data.access_token;
+          }
+        }
+      } catch (e) {
+        // Silent catch to allow instant offline fallback
+      } finally {
+        this.demoAuthPromise = null;
+      }
+      return null;
+    })();
+    return this.demoAuthPromise;
   }
 
   /**
@@ -378,24 +382,9 @@ class ApiService {
 
     // Auto-authenticate with live backend demo athlete if token is missing or dummy mock token
     if ((!accessToken || accessToken === 'demo_access_token_jwt') && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/register')) {
-      try {
-        const demoAuthRes = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'athlete@runzone.ai', password: 'Password123!' }),
-        });
-        if (demoAuthRes.ok) {
-          const authData = await demoAuthRes.json();
-          if (authData?.data?.access_token) {
-            this.setTokens(authData.data.access_token, authData.data.refresh_token);
-            accessToken = authData.data.access_token;
-            if (authData.data.user) {
-              localStorage.setItem('runzone_user', JSON.stringify(authData.data.user));
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Auto demo authentication failed:', e);
+      const fresh = await this.acquireDemoToken();
+      if (fresh) {
+        accessToken = fresh;
       }
     }
 
@@ -443,23 +432,10 @@ class ApiService {
 
         // If refresh token was invalid or missing, auto re-authenticate with demo user to guarantee live Groq AI access
         if (!refreshed) {
-          try {
-            const demoLoginRes = await fetch(`${API_BASE_URL}/auth/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: 'athlete@runzone.ai', password: 'Password123!' }),
-            });
-            if (demoLoginRes.ok) {
-              const d = await demoLoginRes.json();
-              if (d?.data?.access_token) {
-                this.setTokens(d.data.access_token, d.data.refresh_token);
-                if (d.data.user) {
-                  localStorage.setItem('runzone_user', JSON.stringify(d.data.user));
-                }
-                refreshed = true;
-              }
-            }
-          } catch (e) {}
+          const fresh = await this.acquireDemoToken();
+          if (fresh) {
+            refreshed = true;
+          }
         }
 
         if (refreshed) {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" style="background-color: #14181A; color: #EDEEE7; min-height: 100%;">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="https://api.iconify.design/lucide:compass.svg?color=%23B8492E" />
@@ -8,6 +8,31 @@
     <meta name="description" content="RunZone — Territory Conquest & ACWR Fatigue Control for Runners" />
     <link rel="manifest" href="/manifest.json" />
     <title>RunZone — Territory Conquest & Fatigue Control for Runners</title>
+    <!-- Instant dark canvas style to prevent any white flash / blank white screen -->
+    <style>
+      html, body, #root {
+        background-color: #14181A !important;
+        color: #EDEEE7;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <!-- Purge stale PWA service workers that break SPA chunk loading across deploys -->
+    <script>
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var r of registrations) { r.unregister(); }
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var name of names) { caches.delete(name); }
+          });
+        }
+      } catch (e) {}
+    </script>
     <!-- Archivo & Inter Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +40,7 @@
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   </head>
-  <body class="bg-[#14181A] text-[#EDEEE7] font-sans antialiased overflow-x-hidden">
+  <body class="bg-[#14181A] text-[#EDEEE7] font-sans antialiased overflow-x-hidden min-h-screen" style="background-color: #14181A; min-height: 100vh;">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

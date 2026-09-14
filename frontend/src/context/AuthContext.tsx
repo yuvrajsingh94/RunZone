@@ -19,6 +19,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const createDemoUser = (role: UserRole = 'runner'): User => ({
+    id: 1,
+    email: role === 'admin' ? 'zonecommander@runzone.ai' : 'athlete@runzone.ai',
+    username: role === 'admin' ? 'ZoneCommander' : 'ApexRunner',
+    full_name: role === 'admin' ? 'Commander Drake' : 'Alex Mercer',
+    role: role,
+    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    level: 7,
+    xp: 6450,
+    total_distance_km: 142.5,
+    total_territory_km2: 4.82,
+    faction_color: '#3B82F6',
+    resting_hr: 52,
+    max_hr: 194,
+    is_verified: true,
+    is_strava_connected: true,
+    onboarding_status: 'completed',
+    experience_level: 'regular',
+    training_goal: 'aerobic_base',
+    weekly_frequency: '4_5',
+    created_at: new Date().toISOString(),
+  });
+
   useEffect(() => {
     const initAuth = async () => {
       const storedAccessToken = localStorage.getItem('runzone_access_token');
@@ -26,24 +49,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (storedAccessToken && storedUser && storedAccessToken !== 'demo_access_token_jwt') {
         try {
-          setUser(JSON.parse(storedUser));
-          const freshUser = await api.getMe().catch(() => null);
-          if (freshUser) {
-            setUser(freshUser);
-            localStorage.setItem('runzone_user', JSON.stringify(freshUser));
-          }
+          const parsed = JSON.parse(storedUser);
+          setUser(parsed);
+          setLoading(false);
+          api.getMe().then((fresh) => {
+            if (fresh) updateUser(fresh);
+          }).catch(() => null);
+          return;
         } catch (e) {
           localStorage.removeItem('runzone_access_token');
           localStorage.removeItem('runzone_refresh_token');
           localStorage.removeItem('runzone_user');
-          setUser(null);
         }
-      } else {
-        // Automatically provide real demo athlete login with signed JWT from backend
-        await loginDemoUser();
       }
+
+      // Immediately provide demo user so the app hydrates instantly (0ms delay)
+      const defaultUser = createDemoUser();
+      login('demo_access_token_jwt', 'demo_refresh_token_jwt', defaultUser);
       setLoading(false);
 
+      // In background, upgrade to live backend signed JWT
+      loginDemoUser('runner');
     };
 
     initAuth();
@@ -75,37 +101,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginDemoUser = async (role: UserRole = 'runner') => {
     const demoEmail = role === 'admin' ? 'zonecommander@runzone.ai' : 'athlete@runzone.ai';
+    const fallbackUser = createDemoUser(role);
+
+    // If no user yet, hydrate immediately with offline profile
+    setUser((current) => current || fallbackUser);
+
     try {
       const res = await api.login(demoEmail, 'Password123!', true);
-      login(res.access_token, res.refresh_token, res.user);
-      return;
+      if (res?.access_token) {
+        login(res.access_token, res.refresh_token, res.user);
+      }
     } catch (e) {
-      console.warn('Real backend demo login unavailable, using offline fallback', e);
+      console.warn('Real backend demo login unavailable, staying on offline fallback', e);
+      login('demo_access_token_jwt', 'demo_refresh_token_jwt', fallbackUser);
     }
-
-    const demoUser: User = {
-      id: 1,
-      email: demoEmail,
-      username: role === 'admin' ? 'ZoneCommander' : 'ApexRunner',
-      full_name: role === 'admin' ? 'Commander Drake' : 'Alex Mercer',
-      role: role,
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      level: 7,
-      xp: 6450,
-      total_distance_km: 142.5,
-      total_territory_km2: 4.82,
-      faction_color: '#3B82F6',
-      resting_hr: 52,
-      max_hr: 194,
-      is_verified: true,
-      is_strava_connected: true,
-      onboarding_status: 'completed',
-      experience_level: 'regular',
-      training_goal: 'aerobic_base',
-      weekly_frequency: '4_5',
-      created_at: new Date().toISOString(),
-    };
-    login('demo_access_token_jwt', 'demo_refresh_token_jwt', demoUser);
   };
 
 

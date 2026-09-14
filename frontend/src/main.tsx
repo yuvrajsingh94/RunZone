@@ -20,11 +20,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>
 );
 
-// Register PWA service worker in production/browser environments
-if ('serviceWorker' in navigator && (import.meta as any).env?.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.log('ServiceWorker registration error:', err);
-    });
+// Unregister any legacy service workers in production to ensure clean asset hydration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+    }
   });
 }
+
