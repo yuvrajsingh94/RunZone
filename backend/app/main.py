@@ -37,6 +37,13 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing RunZone PostgreSQL/PostGIS database schema...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Additive schema evolution: ensure onboarding profile columns exist on existing production DBs
+        await conn.execute(text("""
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_status VARCHAR(10) DEFAULT 'pending';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_level VARCHAR(20);
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS training_goal VARCHAR(20);
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_frequency VARCHAR(10);
+        """))
     
     # Auto-seed initial demo athlete & rival factions for instant map interaction
     async with AsyncSessionLocal() as db:

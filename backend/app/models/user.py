@@ -27,6 +27,14 @@ class User(Base):
     verification_token = Column(String(255), nullable=True, index=True)
     verification_sent_at = Column(DateTime(timezone=True), nullable=True)
     is_deleted = Column(Boolean, default=False, nullable=False)  # Soft deletion
+
+    # Onboarding Profile (written by quiz; pending → completed | skipped)
+    onboarding_status = Column(String(10), default="pending", nullable=False)
+    experience_level = Column(String(20), nullable=True)   # beginner | regular | endurance
+    training_goal = Column(String(20), nullable=True)       # aerobic_base | first_5k_10k | speed_pr | territory
+    weekly_frequency = Column(String(10), nullable=True)    # 2_3 | 4_5 | 6_plus
+    # health_conditions already exists — quiz writes here, not a second column
+
     
     # Athlete Profile
     avatar_url = Column(String(500), nullable=True)

@@ -780,6 +780,10 @@ For today's session, maintain an aerobic effort in **Zone 2 (${karvonenZones['Zo
         max_hr: 194,
         is_verified: true,
         is_strava_connected: true,
+        onboarding_status: 'completed',
+        experience_level: 'regular',
+        training_goal: 'aerobic_base',
+        weekly_frequency: '4_5',
         created_at: new Date().toISOString(),
       };
       return {
@@ -854,6 +858,19 @@ For today's session, maintain an aerobic effort in **Zone 2 (${karvonenZones['Zo
     return this.request<User>('/auth/me', {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  async submitOnboarding(payload: {
+    action: 'complete' | 'skip';
+    experience_level?: string;
+    training_goal?: string;
+    weekly_frequency?: string;
+    health_conditions?: string[];
+  }): Promise<User> {
+    return this.request<User>('/auth/onboarding', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 

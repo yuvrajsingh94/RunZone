@@ -23,16 +23,24 @@ import { LiveRunModal } from './components/tracker/LiveRunModal';
 import { PWAInstallBanner } from './components/common/PWAInstallBanner';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { RoutePlannerModal } from './components/map/RoutePlannerModal';
+import { OnboardingModal } from './components/auth/OnboardingModal';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading, updateUser } = useAuth();
   const location = useLocation();
   const [liveTrackerOpen, setLiveTrackerOpen] = useState(false);
   const [simulateOpen, setSimulateOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [gpxOpen, setGpxOpen] = useState(false);
   const [routePlannerOpen, setRoutePlannerOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(true);
+
+  React.useEffect(() => {
+    const handleClose = () => setOnboardingOpen(false);
+    window.addEventListener('onboarding:close', handleClose);
+    return () => window.removeEventListener('onboarding:close', handleClose);
+  }, []);
 
   const isAuthOrLandingPage = ['/login', '/register', '/forgot-password', '/reset-password', '/landing'].includes(location.pathname);
 
@@ -152,6 +160,21 @@ export default function App() {
           setLiveTrackerOpen(true);
         }}
       />
+
+      {/* Runner Onboarding Calibration Modal (Pending state only) */}
+      {isAuthenticated && user && user.onboarding_status === 'pending' && onboardingOpen && !isAuthOrLandingPage && (
+        <OnboardingModal
+          user={user}
+          onComplete={(updated) => {
+            updateUser(updated);
+            setOnboardingOpen(false);
+          }}
+          onSkip={(updated) => {
+            updateUser(updated);
+            setOnboardingOpen(false);
+          }}
+        />
+      )}
 
       {/* PWA Mobile Install Prompt */}
       <PWAInstallBanner />

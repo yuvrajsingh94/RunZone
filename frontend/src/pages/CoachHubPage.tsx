@@ -5,6 +5,8 @@ import { Send, Loader2, Cpu, HeartPulse, Sparkles, X } from 'lucide-react';
 import { MarkdownMessage } from '../components/coach/MarkdownMessage';
 import { TrainingPlanModal } from '../components/coach/TrainingPlanModal';
 import { VoiceCoachRecorder } from '../components/coach/VoiceCoachRecorder';
+import { OnboardingModal } from '../components/auth/OnboardingModal';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -14,8 +16,19 @@ interface Message {
 }
 
 export const CoachHubPage: React.FC = () => {
+  const { user, updateUser } = useAuth();
   const [briefing, setBriefing] = useState<DailyCoachBriefing | null>(null);
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [onboardingModalOpen, setOnboardingModalOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    return sessionStorage.getItem('runzone_onboarding_banner_dismissed') === 'true';
+  });
+
+  const dismissBanner = () => {
+    sessionStorage.setItem('runzone_onboarding_banner_dismissed', 'true');
+    setBannerDismissed(true);
+  };
+
   const [healthConditions, setHealthConditions] = useState<string[]>(() => {
     try {
       const storedUser = JSON.parse(localStorage.getItem('runzone_user') || '{}');
@@ -118,6 +131,33 @@ export const CoachHubPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Quiet Skipped Profile Nudge Banner */}
+      {user?.onboarding_status === 'skipped' && !bannerDismissed && (
+        <div className="p-3 bg-panel border border-hairline flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cinder/80" />
+            <span className="text-chalk-muted">
+              Complete your athlete profile for tailored goal and pacing coaching.
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setOnboardingModalOpen(true)}
+              className="text-cinder hover:text-cinder-hover font-display font-semibold transition-colors"
+            >
+              Complete setup ›
+            </button>
+            <button
+              onClick={dismissBanner}
+              className="text-chalk-muted hover:text-chalk text-xs"
+              aria-label="Dismiss banner"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Active Medical & Health Profile Banner */}
       {healthConditions.length > 0 && (
@@ -296,6 +336,21 @@ export const CoachHubPage: React.FC = () => {
         isOpen={planModalOpen}
         onClose={() => setPlanModalOpen(false)}
       />
+
+      {/* Onboarding Quiz Modal (launched from CoachHub setup banner) */}
+      {user && onboardingModalOpen && (
+        <OnboardingModal
+          user={user}
+          onComplete={(updated) => {
+            updateUser(updated);
+            setOnboardingModalOpen(false);
+          }}
+          onSkip={(updated) => {
+            updateUser(updated);
+            setOnboardingModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

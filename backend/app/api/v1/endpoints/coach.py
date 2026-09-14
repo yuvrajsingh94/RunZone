@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -19,6 +19,34 @@ from app.services.coach_guardrails import CoachGuardrails
 router = APIRouter(prefix="/coach", tags=["AI ZoneCoach"])
 
 
+async def _build_territory_context(db: AsyncSession, user_id: int) -> str:
+    """
+    Build a one-line territory intelligence string for territory-goal runners.
+    Only called when training_goal == 'territory'. Returns an empty string on error.
+    """
+    try:
+        from app.models.territory import TerritoryZone  # local import to avoid circular deps
+        owned_q = await db.execute(
+            select(func.count()).where(TerritoryZone.owner_id == user_id)
+        )
+        owned_count = owned_q.scalar() or 0
+
+        decay_q = await db.execute(
+            select(func.count()).where(
+                TerritoryZone.owner_id == user_id,
+                TerritoryZone.defense_points < 30,
+            )
+        )
+        decay_count = decay_q.scalar() or 0
+
+        return (
+            f"{owned_count} sector(s) held; "
+            f"{decay_count} sector(s) at decay risk (defense_points < 30)."
+        )
+    except Exception:
+        return ""
+
+
 @router.get("/daily-briefing", response_model=APIResponse[DailyCoachBriefing])
 async def get_daily_coach_briefing(
     current_user: User = Depends(get_current_user),
@@ -26,17 +54,27 @@ async def get_daily_coach_briefing(
 ):
     """
     Get personalized AI Coach daily briefing powered by Groq Llama 3.3 70B & fallbacks,
-    adapted to the athlete's chronic health conditions and ACWR score.
+    adapted to the athlete's chronic health conditions, ACWR score, and onboarding profile.
     """
     health_list = [c.strip() for c in (current_user.health_conditions or "").split(",") if c.strip()]
     acwr_summary = await ACWRService.compute_user_acwr(db=db, user_id=current_user.id)
-    
+
+    # Fetch territory context only for territory-goal runners (token efficiency)
+    territory_context = ""
+    if getattr(current_user, "training_goal", None) == "territory":
+        territory_context = await _build_territory_context(db, current_user.id)
+
     briefing = await LLMCoachService.generate_daily_briefing(
         username=current_user.full_name or current_user.username,
         acwr_data=acwr_summary,
         resting_hr=current_user.resting_hr or 52,
         max_hr=current_user.max_hr or 194,
         health_conditions=health_list,
+        experience_level=getattr(current_user, "experience_level", None),
+        training_goal=getattr(current_user, "training_goal", None),
+        weekly_frequency=getattr(current_user, "weekly_frequency", None),
+        onboarding_status=getattr(current_user, "onboarding_status", None),
+        territory_context=territory_context,
     )
     return APIResponse(
         success=True,
@@ -71,6 +109,12 @@ async def chat_with_coach(
             await db.refresh(current_user)
 
     acwr_summary = await ACWRService.compute_user_acwr(db=db, user_id=current_user.id)
+
+    # Fetch territory context only for territory-goal runners (token efficiency)
+    territory_context = ""
+    if getattr(current_user, "training_goal", None) == "territory":
+        territory_context = await _build_territory_context(db, current_user.id)
+
     response_text, model_used = await LLMCoachService.chat_with_coach(
         username=current_user.full_name or current_user.username,
         user_message=payload.message,
@@ -79,6 +123,11 @@ async def chat_with_coach(
         resting_hr=current_user.resting_hr or 52,
         max_hr=current_user.max_hr or 194,
         health_conditions=health_list,
+        experience_level=getattr(current_user, "experience_level", None),
+        training_goal=getattr(current_user, "training_goal", None),
+        weekly_frequency=getattr(current_user, "weekly_frequency", None),
+        onboarding_status=getattr(current_user, "onboarding_status", None),
+        territory_context=territory_context,
     )
 
     return APIResponse(
@@ -91,6 +140,7 @@ async def chat_with_coach(
             "health_conditions": health_list,
         },
     )
+
 
 
 @router.post("/generate-plan", response_model=APIResponse[AdaptiveTrainingPlan])

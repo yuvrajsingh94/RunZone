@@ -119,6 +119,12 @@ class LLMCoachService:
         resting_hr: int = 52,
         max_hr: int = 194,
         health_conditions: Optional[List[str]] = None,
+        # Onboarding profile — all Optional so existing callers need no changes
+        experience_level: Optional[str] = None,
+        training_goal: Optional[str] = None,
+        weekly_frequency: Optional[str] = None,
+        onboarding_status: Optional[str] = None,
+        territory_context: Optional[str] = None,
     ) -> DailyCoachBriefing:
         """
         Generate intelligent coaching briefing combining ACWR mathematical score, sports physiology,
@@ -126,6 +132,39 @@ class LLMCoachService:
         """
         karvonen_zones = CoachGuardrails.calculate_karvonen_zones(resting_hr, max_hr)
         health_rules = CoachGuardrails.format_health_safety_rules(health_conditions or [])
+
+        # Build onboarding block (same logic as chat_with_coach — single source of anti-hallucination truth)
+        if onboarding_status == "completed":
+            freq_map = {"2_3": "2–3 times/week", "4_5": "4–5 times/week", "6_plus": "6+ times/week"}
+            freq_label = freq_map.get(weekly_frequency or "", weekly_frequency or "not specified")
+            territory_section = ""
+            if training_goal == "territory" and territory_context:
+                territory_section = f"\n        Territory Intelligence: {territory_context}"
+            goal_framing_map = {
+                "aerobic_base": "Prioritise Zone 2 language, aerobic base maintenance, and consistency.",
+                "first_5k_10k": "Frame around race-readiness, distance progression, and completion confidence.",
+                "speed_pr": (
+                    "Emphasise pace targets and interval structure (preference only — "
+                    "if ACWR > 1.30, default to aerobic_base framing and do not prescribe speedwork)."
+                ),
+                "territory": "Frame around RunZone map patrol runs, sector capture, and aerobic frequency.",
+            }
+            goal_framing = goal_framing_map.get(training_goal or "", "")
+            onboarding_block = (
+                f"Athlete Profile: Experience={experience_level}, Goal={training_goal}, "
+                f"Frequency={freq_label}.{territory_section} {goal_framing}"
+            )
+        else:
+            nudge = (
+                "Once — not every message — suggest completing the quick setup quiz."
+                if onboarding_status == "skipped"
+                else
+                "Once — not every message — mention the athlete profile setup."
+            )
+            onboarding_block = (
+                f"Athlete Training Profile: Not provided. Do not guess experience level or goal. "
+                f"Default to Zone 1-2 guidance driven by physiological context only. {nudge}"
+            )
 
         system_prompt = (
             "You are 'ZoneCoach', an elite AI sports physiologist and running coach for the RunZone platform. "
@@ -149,6 +188,8 @@ class LLMCoachService:
         
         {health_rules}
         
+        {onboarding_block}
+        
         Generate a daily briefing JSON object with exact keys:
         - "title": concise action title (e.g. "Optimal Conditioning — Aerobic Base Maintenance")
         - "greeting": short morning greeting
@@ -157,6 +198,7 @@ class LLMCoachService:
         - "recommended_workout": specific prescribed distance, pace, and workout structure for today
         - "suggested_target_zone": heart rate zone recommendation
         - "motivational_quote": quiet physiological endurance insight
+        Workload Safety Rule: if ACWR > 1.30 do NOT recommend intense intervals; if ACWR > 1.50 enforce active recovery only.
         """
 
         messages = [
@@ -237,6 +279,12 @@ class LLMCoachService:
         resting_hr: int = 52,
         max_hr: int = 194,
         health_conditions: Optional[List[str]] = None,
+        # Onboarding profile — all Optional so existing callers need no changes
+        experience_level: Optional[str] = None,
+        training_goal: Optional[str] = None,
+        weekly_frequency: Optional[str] = None,
+        onboarding_status: Optional[str] = None,
+        territory_context: Optional[str] = None,
     ) -> Tuple[str, str]:
         """
         Interactive conversational AI coach with persistent health condition memory,
@@ -268,6 +316,62 @@ class LLMCoachService:
         health_rules = CoachGuardrails.format_health_safety_rules(active_conditions)
 
         # ================= GUARDRAIL TIER 2: Hardened System Prompt =================
+        # Build onboarding block: completed → full profile; else → anti-hallucination guardrail
+        if onboarding_status == "completed":
+            # Goal-specific framing rules
+            goal_framing_map = {
+                "aerobic_base": (
+                    "GOAL FRAMING — Aerobic Base: Prioritise Zone 2 language, long slow distance, "
+                    "consistency, and heart-health framing. Avoid pace obsession."
+                ),
+                "first_5k_10k": (
+                    "GOAL FRAMING — First 5K/10K: Frame advice around race-readiness, progressive "
+                    "distance build, and completion confidence. Use beginner-accessible pacing cues."
+                ),
+                "speed_pr": (
+                    "GOAL FRAMING — Speed PR: Emphasise pace targets, interval structure, and lactate "
+                    "threshold development. NOTE: this framing is preference only — if ACWR > 1.30, "
+                    "revert immediately to aerobic_base framing; never prescribe speedwork above that threshold."
+                ),
+                "territory": (
+                    "GOAL FRAMING — Territory: Frame advice around RunZone map conquest — loop routing, "
+                    "sector capture efficiency, and maintaining aerobic fitness for frequent patrol runs."
+                ),
+            }
+            goal_framing = goal_framing_map.get(training_goal or "", "")
+
+            freq_map = {"2_3": "2–3 times/week", "4_5": "4–5 times/week", "6_plus": "6+ times/week"}
+            freq_label = freq_map.get(weekly_frequency or "", weekly_frequency or "not specified")
+
+            territory_section = ""
+            if training_goal == "territory" and territory_context:
+                territory_section = f"\n        Territory Intelligence: {territory_context}"
+
+            onboarding_block = (
+                f"Athlete Training Profile:\n"
+                f"        - Experience Level: {experience_level}\n"
+                f"        - Primary Training Goal: {training_goal}\n"
+                f"        - Weekly Training Frequency: {freq_label}{territory_section}\n"
+                f"        {goal_framing}\n"
+                f"        Personalise all workout recommendations, pacing guidance, and motivational "
+                f"framing to match the athlete's declared experience level and goal. Do not contradict "
+                f"the Workload Safety Rule below."
+            )
+        else:
+            nudge = (
+                "Once — not every message — invite them to finish the quick setup quiz for more tailored coaching."
+                if onboarding_status == "skipped"
+                else
+                "Once — not every message — mention they can set up their profile for more tailored coaching."
+            )
+            onboarding_block = (
+                f"Athlete Training Profile: Not provided.\n"
+                f"        Do not guess the athlete's experience level or goal. Do not say phrases like "
+                f"\"since you're a beginner\" or \"since your goal is X\" — you don't have that data. "
+                f"Default to safe, general Zone 1-2 guidance driven only by the physiological context above. "
+                f"{nudge}"
+            )
+
         system_prompt = f"""
         You are 'ZoneCoach', an elite endurance running coach and exercise physiologist for the RunZone platform.
         Athlete Name: {username}
@@ -287,6 +391,8 @@ class LLMCoachService:
         
         {health_rules}
         
+        {onboarding_block}
+        
         Strict Scope & Boundary Constraints:
         1. Scope: You exclusively cover running training, workout pacing, recovery protocols, soft-tissue injury risk/ACWR, RunZone territory strategy, sleep, and running-related supplements/nutrition.
         2. Scope Enforcement: For ANY question or request outside of this scope (including writing software code, non-running academic essays, financial/crypto advice, general disease diagnosis, politics, or unrelated topics), you MUST return EXACTLY this refusal string and nothing else:
@@ -299,6 +405,7 @@ class LLMCoachService:
         3. Do NOT use emojis, exclamation marks, or generic cheerleading. Keep sentences concise, plain, and actionable in sentence case.
         4. When discussing territory conquest, explain how 40m GPS buffering in PostGIS rewards smart loop routing without overloading acute fatigue.
         5. Workload Safety Rule: If the athlete's ACWR > 1.30, do NOT recommend intense interval workouts. If ACWR > 1.50, strictly enforce active recovery.
+        6. TTS Delivery Rule: When answering in voice mode, express all numeric ranges and values as spoken words (e.g. "one hundred and forty to one hundred and fifty beats per minute", not "140–150 bpm").
         """
 
         messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
@@ -316,8 +423,13 @@ class LLMCoachService:
                 temperature=0.5,
                 max_tokens=750,
             )
-            # Post-execution validation
-            validated_content = CoachGuardrails.validate_coach_output(content.strip(), acwr_data.current_acwr, active_conditions)
+            # Post-execution validation (Tier 3)
+            validated_content = CoachGuardrails.validate_coach_output(
+                content.strip(),
+                acwr_data.current_acwr,
+                active_conditions,
+                onboarding_status=onboarding_status,
+            )
             
             # If a new health condition was just reported, prepend confirmation note
             if has_new_condition:

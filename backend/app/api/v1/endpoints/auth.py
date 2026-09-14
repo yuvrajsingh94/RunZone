@@ -18,6 +18,7 @@ from app.schemas.auth import (
     ResendVerificationRequest,
     UserResponse,
     UserUpdate,
+    OnboardingSubmitRequest,
 )
 from app.schemas.common import APIResponse
 from app.services.auth_service import AuthService
@@ -233,3 +234,59 @@ async def update_me(
         message="Profile updated successfully",
         data=UserResponse.model_validate(current_user),
     )
+
+
+@router.post(
+    "/onboarding",
+    response_model=APIResponse[UserResponse],
+    dependencies=[Depends(rate_limit("onboarding", max_requests=10, window_seconds=60))],
+)
+async def submit_onboarding(
+    payload: OnboardingSubmitRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Athlete Onboarding Profile Submission.
+
+    action='complete' writes experience_level, training_goal, weekly_frequency
+    and merges any health_conditions from the quiz into the single shared
+    health_conditions column (same column Tier 1 chat extraction writes to).
+    action='skip' leaves profile fields None and sets onboarding_status='skipped'.
+
+    Both transitions emit an updated UserResponse so the client can refresh
+    the cached user object and stop presenting the modal.
+    """
+    if payload.action == "complete":
+        current_user.onboarding_status = "completed"
+        if payload.experience_level is not None:
+            current_user.experience_level = payload.experience_level
+        if payload.training_goal is not None:
+            current_user.training_goal = payload.training_goal
+        if payload.weekly_frequency is not None:
+            current_user.weekly_frequency = payload.weekly_frequency
+
+        # Merge quiz health_conditions into the single shared column (Tier 1 source of truth).
+        # Comma-separated, deduplicated, case-insensitive.
+        if payload.health_conditions:
+            existing_raw = current_user.health_conditions or ""
+            existing_set = {c.strip().lower() for c in existing_raw.split(",") if c.strip()}
+            for condition in payload.health_conditions:
+                stripped = condition.strip()
+                if stripped and stripped.lower() not in existing_set:
+                    existing_set.add(stripped.lower())
+                    existing_raw = f"{existing_raw},{stripped}" if existing_raw else stripped
+            current_user.health_conditions = existing_raw.strip(",")
+
+    else:  # skip
+        current_user.onboarding_status = "skipped"
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return APIResponse(
+        success=True,
+        message="Onboarding profile saved." if payload.action == "complete" else "Onboarding skipped.",
+        data=UserResponse.model_validate(current_user),
+    )
+

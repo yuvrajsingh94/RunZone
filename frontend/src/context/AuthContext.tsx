@@ -89,6 +89,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       max_hr: 194,
       is_verified: true,
       is_strava_connected: true,
+      onboarding_status: 'completed',
+      experience_level: 'regular',
+      training_goal: 'aerobic_base',
+      weekly_frequency: '4_5',
       created_at: new Date().toISOString(),
     };
     login('demo_access_token_jwt', 'demo_refresh_token_jwt', demoUser);

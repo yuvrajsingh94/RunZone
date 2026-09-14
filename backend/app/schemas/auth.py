@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
@@ -106,6 +106,11 @@ class UserResponse(BaseModel):
     is_verified: bool = False
     is_strava_connected: bool = False
     health_conditions: Optional[str] = None
+    # Onboarding profile fields
+    onboarding_status: str = "pending"
+    experience_level: Optional[str] = None
+    training_goal: Optional[str] = None
+    weekly_frequency: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -135,3 +140,17 @@ class UserUpdate(BaseModel):
     weight_kg: Optional[float] = Field(None, ge=30, le=250)
     faction_color: Optional[str] = Field(None, max_length=20)
     health_conditions: Optional[str] = Field(None, max_length=500)
+
+
+class OnboardingSubmitRequest(BaseModel):
+    """
+    Submitted once after the 4-question onboarding quiz.
+    action='complete' → writes profile fields and sets onboarding_status='completed'.
+    action='skip'     → leaves profile fields None and sets onboarding_status='skipped'.
+    health_conditions from the quiz merges into the same column Tier 1 already writes to.
+    """
+    action: Literal["complete", "skip"]
+    experience_level: Optional[Literal["beginner", "regular", "endurance"]] = None
+    training_goal: Optional[Literal["aerobic_base", "first_5k_10k", "speed_pr", "territory"]] = None
+    weekly_frequency: Optional[Literal["2_3", "4_5", "6_plus"]] = None
+    health_conditions: Optional[List[str]] = Field(None, max_items=10)

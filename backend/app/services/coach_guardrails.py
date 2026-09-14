@@ -263,10 +263,18 @@ class CoachGuardrails:
         }
 
     @classmethod
-    def validate_coach_output(cls, response_text: str, acwr: float, health_conditions: Optional[List[str]] = None) -> str:
+    def validate_coach_output(
+        cls,
+        response_text: str,
+        acwr: float,
+        health_conditions: Optional[List[str]] = None,
+        onboarding_status: Optional[str] = None,
+    ) -> str:
         """
-        Post-execution validator that guarantees high-fatigue athletes (ACWR > 1.50)
-        or athletes with heart conditions are not prescribed dangerous threshold/sprint workouts.
+        Post-execution validator with three layers:
+        1. Cardiovascular safety append (heart condition + intense keywords).
+        2. Workload safety hard-replace (ACWR > 1.50 + intense keywords).
+        3. Persona-fabrication strip (skipped/pending onboarding + hallucinated persona phrases).
         """
         has_heart_issue = health_conditions and any("heart" in c.lower() or "cardiovascular" in c.lower() for c in health_conditions)
 
@@ -292,4 +300,20 @@ class CoachGuardrails:
                     "- Prioritize 8+ hours of sleep and high protein intake to restore muscle glycogen and repair microtrauma."
                 )
 
+        # Layer 3: Persona-fabrication guard
+        # If onboarding profile is not completed, strip any sentence where the model
+        # hallucinated experience/goal assumptions ("since you're a beginner" etc.).
+        if onboarding_status != "completed":
+            _FABRICATED_PERSONA_PATTERNS = re.compile(
+                r"[^.!?]*(?:since you(?:'re| are) a (?:beginner|regular|endurance runner)|"
+                r"since your goal is|as a (?:beginner|regular runner)|"
+                r"given that you(?:'re| are) a (?:beginner|regular|endurance))[^.!?]*[.!?]?",
+                re.IGNORECASE,
+            )
+            cleaned = _FABRICATED_PERSONA_PATTERNS.sub("", response_text).strip()
+            # Only accept the cleaned version if it's not empty (safety net)
+            if cleaned:
+                response_text = cleaned
+
         return response_text
+

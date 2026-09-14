@@ -17,6 +17,11 @@ export interface User {
   is_verified: boolean;
   is_strava_connected: boolean;
   health_conditions?: string[];
+  // Onboarding profile
+  onboarding_status?: 'pending' | 'completed' | 'skipped';
+  experience_level?: 'beginner' | 'regular' | 'endurance';
+  training_goal?: 'aerobic_base' | 'first_5k_10k' | 'speed_pr' | 'territory';
+  weekly_frequency?: '2_3' | '4_5' | '6_plus';
   created_at: string;
 }
 
